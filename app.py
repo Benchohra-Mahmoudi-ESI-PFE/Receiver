@@ -11,10 +11,14 @@ import sys
 sys.path.insert(1, '../Speaker_Verification_Vox1/')
 from hparam import hparam as hp
 
+#sys.path.append(".")
+from aes_utils import AESCipher
+
+key = 'this is my key'
+aes_cipher = AESCipher(key)
+
 
 app = Flask(__name__)
-
-
 
 
 @app.route('/', methods = ['GET'])
@@ -27,6 +31,8 @@ def about():
 
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verifiy():
+    
+    start_fct = time.time()
 
     if(not request.form['AUDIO'] or not request.form['IMG']):
         return 'Données non complètes'
@@ -34,21 +40,26 @@ def upload_verifiy():
     '''print(request.form['audio-file-name'])
     print(request.form['photo-file-name'])'''
 
-    audio_data = base64.b64decode(request.form['AUDIO'])
-    audio_file_path = hp.integration.verify_upload_folder + request.form['audio-file-name']
+
+    audio_data = base64.b64decode(aes_cipher.decrypt(request.form['AUDIO']))
+    audio_file_path = hp.integration.verify_upload_folder + aes_cipher.decrypt(request.form['audio-file-name'])
+    img_data = base64.b64decode(aes_cipher.decrypt(request.form['IMG']))
+    img_file_path = hp.integration.verify_upload_folder + aes_cipher.decrypt(request.form['photo-file-name'])
+    
     with open(audio_file_path, 'wb') as f:
         f.write(audio_data)
-    
-    img_data = base64.b64decode(request.form['IMG'])
-    img_file_path = hp.integration.verify_upload_folder + request.form['photo-file-name']
     with open(img_file_path, 'wb') as f:
         f.write(img_data)
 
+    start_decrypt = time.time()
+    print("Time to decrypt : %f" % (time.time() - start_decrypt))
+
     
-    #print('\n############################# Incoming Verification ... #################################################')
-    
-    os.system("conda run -n voice_py3 python -W ignore "+hp.integration.speaker_verification_path
-    +"verify_speaker.py --verify t --test_wav_file " + audio_file_path + 
+    #print('\n######################################### Incoming Verification ... #################################################')
+    start_rv = time.time()
+
+    os.system("conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
+    + "verify_speaker.py --verify t --test_wav_file " + audio_file_path + 
     " --best_identified_speakers ./")
 
     with open('./speaker_result.data', 'rb') as filehandle:
@@ -57,24 +68,34 @@ def upload_verifiy():
 
     restriction_list = [x[0] for x in best_identified_speakers]
 
+    print("Time to recognize voice : %f" % (time.time() - start_rv))
+
     #print(restriction_list)
 
     """ start = time.time()
     print('\n#################### start time 1 : '+ str(start)) """
 
+    start_rf1 = time.time()
+
     os.system("conda run -n pytorch_main python " + hp.integration.face_verification_path + 
     "extract_face.py --input_image " + img_file_path + 
     " --destination_dir " + hp.integration.verify_upload_folder)
+
+    print("Time to extract face : %f" % (time.time() - start_rf1))
 
     #print('\n#################### cmd1 time: '+ str(time.time() - start))
 
     #start = time.time()
     #print('\n#################### start time 2 : '+ str(start))
+
+    start_rf2 = time.time()
     
     os.system("conda run -n vgg_py3 python " + hp.integration.face_verification_path + 
     "identify_face.py --face_image " + os.path.splitext(img_file_path)[0]+"_visage.jpg" + " --preprocessed_dir " 
     + hp.integration.enroll_preprocessed_photo 
     + " --best_identified_faces ./")# + os.path.dirname(__file__))
+
+    print("Time to recognize face : %f" % (time.time() - start_rf2))
     
     # + " --restriction_list " + restriction_list
 
@@ -83,7 +104,10 @@ def upload_verifiy():
     with open('./facial_result.data', 'rb') as filehandle:
     # read the data as binary data stream
         best_identified_faces = pickle.load(filehandle)
-    print('\n############################# Incoming Verification ... #################################################')
+
+
+
+    print('\n######################################### Incoming Verification ... #################################################')
     print('\n\tVerifying the speech...')
     id = best_identified_speakers[0][0]
     lname = id.split('_')[2]
@@ -127,13 +151,13 @@ def upload_enroll():
     print(request.form['photo-file-name'])'''
 
 
-    audio_data = base64.b64decode(request.form['AUDIO'])
-    audio_file_path = hp.integration.enroll_upload_audio_folder + request.form['audio-file-name']
+    audio_data = base64.b64decode(aes_cipher.decrypt(request.form['AUDIO']))
+    audio_file_path = hp.integration.enroll_upload_audio_folder + aes_cipher.decrypt(request.form['audio-file-name'])
     with open(audio_file_path, 'wb') as f:
         f.write(audio_data)
     
-    img_data = base64.b64decode(request.form['IMG'])
-    img_file_path = hp.integration.enroll_upload_photo_folder + request.form['photo-file-name']
+    img_data = base64.b64decode(aes_cipher.decrypt(request.form['IMG']))
+    img_file_path = hp.integration.enroll_upload_photo_folder + aes_cipher.decrypt(request.form['photo-file-name'])
     with open(img_file_path, 'wb') as f:
         f.write(img_data)
     
@@ -147,10 +171,10 @@ def upload_enroll():
     hp.integration.enroll_preprocessed_photo)
     
     print('\n############################# Incoming Enrollment ... #################################################')
-    print('\n\tSuccessfully enrolled '+ request.form['user-lastname'] + ' ' +request.form['user-firstname'])
+    print('\n\tSuccessfully enrolled '+ aes_cipher.decrypt(request.form['user-lastname']) + ' ' + aes_cipher.decrypt(request.form['user-firstname']))
     
-    audio_file_path = 'uploads_enrollment/audio/' + request.form['audio-file-name'] + '.npy'
-    img_file_path = 'uploads_enrollment/photo/'+ request.form['photo-file-name'] + '_visage.jpg'
+    audio_file_path = 'uploads_enrollment/audio/' + aes_cipher.decrypt(request.form['audio-file-name']) + '.npy'
+    img_file_path = 'uploads_enrollment/photo/'+ aes_cipher.decrypt(request.form['photo-file-name']) + '_visage.jpg'
 
     print('\n  Audio preprocessed and saved as : \n  ' + audio_file_path)
     print('\n  Photo preprocessed and saved as : \n  ' + img_file_path + '\n')
