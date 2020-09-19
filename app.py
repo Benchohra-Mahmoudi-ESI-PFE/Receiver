@@ -6,6 +6,7 @@ import base64
 import time
 import pickle
 import sys
+import subprocess
 
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, '../Speaker_Verification_Vox1/')
@@ -31,8 +32,6 @@ def about():
 
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verifiy():
-    
-    start_fct = time.time()
 
     if(not request.form['AUDIO'] or not request.form['IMG']):
         return 'Données non complètes'
@@ -51,46 +50,42 @@ def upload_verifiy():
     with open(img_file_path, 'wb') as f:
         f.write(img_data)
 
-    start_decrypt = time.time()
-    print("Time to decrypt : %f" % (time.time() - start_decrypt))
-
-    
-    #print('\n######################################### Incoming Verification ... #################################################')
     start_rv = time.time()
+    # print(start_rv)
+
+    # _ = subprocess.run(["conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
+    #              + "verify_speaker.py --verify t --test_wav_file " + audio_file_path
+    #              + " --best_identified_speakers ./"]
+    #          , check=True)
+    # print("after %f" % (time.time - start_rv))
 
     os.system("conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
     + "verify_speaker.py --verify t --test_wav_file " + audio_file_path + 
     " --best_identified_speakers ./")
 
-    with open('./speaker_result.data', 'rb') as filehandle:
+    with open('./speaker_result.data', 'wb') as filehandle:
     # read the data as binary data stream
         best_identified_speakers = pickle.load(filehandle)
 
-    restriction_list = [x[0] for x in best_identified_speakers]
-
     print("Time to recognize voice : %f" % (time.time() - start_rv))
+
+    #restriction_list = [x[0] for x in best_identified_speakers]
 
     #print(restriction_list)
 
-    """ start = time.time()
-    print('\n#################### start time 1 : '+ str(start)) """
+    #time.sleep(5)
 
     start_rf1 = time.time()
 
-    os.system("conda run -n pytorch_main python " + hp.integration.face_verification_path + 
+    os.system("conda run -n pytorch_main python -W ignore " + hp.integration.face_verification_path + 
     "extract_face.py --input_image " + img_file_path + 
     " --destination_dir " + hp.integration.verify_upload_folder)
 
     print("Time to extract face : %f" % (time.time() - start_rf1))
 
-    #print('\n#################### cmd1 time: '+ str(time.time() - start))
-
-    #start = time.time()
-    #print('\n#################### start time 2 : '+ str(start))
-
     start_rf2 = time.time()
     
-    os.system("conda run -n vgg_py3 python " + hp.integration.face_verification_path + 
+    os.system("conda run -n vgg_py3 python -W ignore " + hp.integration.face_verification_path + 
     "identify_face.py --face_image " + os.path.splitext(img_file_path)[0]+"_visage.jpg" + " --preprocessed_dir " 
     + hp.integration.enroll_preprocessed_photo 
     + " --best_identified_faces ./")# + os.path.dirname(__file__))
@@ -105,6 +100,9 @@ def upload_verifiy():
     # read the data as binary data stream
         best_identified_faces = pickle.load(filehandle)
 
+    print(best_identified_speakers)
+    print("")
+    print(best_identified_faces)
 
 
     print('\n######################################### Incoming Verification ... #################################################')
@@ -135,9 +133,16 @@ def upload_verifiy():
     else:
         return_msg = 'Not recognized'
         print('\n\t'+return_msg)
+
+    #os.system("rm " + audio_file_path + " " + img_file_path + " " + os.path.splitext(img_file_path)[0]+"_visage.jpg")
     
     print('\n\n')
     return return_msg
+
+
+
+
+
 
 
 @app.route('/upload_enrollment', methods = [ 'POST'])
@@ -160,8 +165,6 @@ def upload_enroll():
     img_file_path = hp.integration.enroll_upload_photo_folder + aes_cipher.decrypt(request.form['photo-file-name'])
     with open(img_file_path, 'wb') as f:
         f.write(img_data)
-    
-    #print('\n################################################ Enrollment Phase #################################################')
 
     os.system("conda run -n voice_py3 python -W ignore "+hp.integration.speaker_verification_path+
     "verify_speaker.py --verify f --test_wav_file " + audio_file_path)
@@ -172,9 +175,6 @@ def upload_enroll():
     
     print('\n############################# Incoming Enrollment ... #################################################')
     print('\n\tSuccessfully enrolled '+ aes_cipher.decrypt(request.form['user-lastname']) + ' ' + aes_cipher.decrypt(request.form['user-firstname']))
-    
-    #audio_file_path = 'uploads_enrollment/audio/' + aes_cipher.decrypt(request.form['audio-file-name']) + '.npy'
-    #img_file_path = 'uploads_enrollment/photo/'+ aes_cipher.decrypt(request.form['photo-file-name']) + '_visage.jpg'
 
     audio_file_path = 'uploads_enrollment/audio/' + os.path.splitext(aes_cipher.decrypt(request.form['audio-file-name']))[0] + '.npy'
     img_file_path = 'uploads_enrollment/photo/'+ os.path.splitext(aes_cipher.decrypt(request.form['photo-file-name']))[0] + '_visage.jpg'
