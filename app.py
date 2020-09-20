@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template
 from flask import request
+from flask_sqlalchemy import SQLAlchemy
 import numpy
 import base64
 import time
@@ -18,9 +19,25 @@ from aes_utils import AESCipher
 key = 'this is my key'
 aes_cipher = AESCipher(key)
 
-
+# Initiating the Flask app
 app = Flask(__name__)
 
+# Setting up the database
+if hp.app.ENV == 'dev':
+    app.debug = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' 
+    + hp.app.dev_db_username + ':' 
+    + hp.app.dev_db_password +  '@'
+    + hp.app.dev_host + '/'
+    + hp.app.dev_db_name
+else:
+    app.debug = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = ''
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Getting a db instance
+db = SQLAlchemy(app)
 
 @app.route('/', methods = ['GET'])
 def home():
