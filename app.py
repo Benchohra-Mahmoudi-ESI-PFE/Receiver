@@ -40,27 +40,37 @@ def about():
 
 
 @app.route('/upload_verification', methods = ['POST'])
-def upload_verifiy():
+def upload_verify():
 
     print('\n######################################### Incoming Verification ... #################################################')
 
-    if(not request.form['AUDIO'] or not request.form['IMG']):
+    if not request.form['IMG'] \
+    or not request.form['AUDIO'] \
+    or not request.form['timestamp']:
         return 'Données non complètes'
-    
-    '''print(request.form['audio-file-name'])
-    print(request.form['photo-file-name'])'''
+        
 
+    # Decrpting data
+    img_data_encoded = aes_cipher.decrypt(request.form['IMG'])
+    audio_data_encoded = aes_cipher.decrypt(request.form['AUDIO'])
+    timestamp = aes_cipher.decrypt(request.form['timestamp'])
 
-    audio_data = base64.b64decode(aes_cipher.decrypt(request.form['AUDIO']))
-    audio_file_path = hp.integration.verify_upload_folder + aes_cipher.decrypt(request.form['audio-file-name'])
-    img_data = base64.b64decode(aes_cipher.decrypt(request.form['IMG']))
-    img_file_name = aes_cipher.decrypt(request.form['photo-file-name'])
+    # Decoding image and audio data
+    img_data = base64.b64decode(img_data_encoded)
+    audio_data = base64.b64decode(audio_data_encoded)
+
+    # Writing image data to disk
+    img_file_name = timestamp + "_verify_photo.jpg"
     img_file_path = hp.integration.verify_upload_folder + img_file_name
-    
-    with open(audio_file_path, 'wb') as f:
-        f.write(audio_data)
     with open(img_file_path, 'wb') as f:
         f.write(img_data)
+    
+    # Writing audio data to disk
+    audio_file_name = timestamp + "_verify_audio.m4a"
+    audio_file_path = hp.integration.verify_upload_folder + audio_file_name
+    with open(audio_file_path, 'wb') as f:
+        f.write(audio_data)
+        
 
     start_rv = time.time()
     # print(start_rv)
@@ -84,10 +94,10 @@ def upload_verifiy():
     print("Time to recognize voice : %f" % (time.time() - start_rv)) """
 
     #restriction_list = [x[0] for x in best_identified_speakers]
-
     #print(restriction_list)
-
     #time.sleep(5)
+
+
 
     start_rf1 = time.time()
     err_code_rf1 = os.system("conda run -n pytorch_main python " 
@@ -146,7 +156,7 @@ def upload_verifiy():
 
     else:
         return_msg = 'Not recognized'
-        print('\n\t'+return_msg)
+        print('\n\t' + return_msg)
 
     
     print('\n\n')
@@ -170,10 +180,7 @@ def upload_enroll():
     or not request.form['user-lastname'] \
     or not request.form['timestamp']:
         return 'Données non complètes'
-    
-    '''print(request.form['user-firstname'] +"  "+request.form['user-lastname'])
-    print(request.form['audio-file-name'])
-    print(request.form['photo-file-name'])'''
+
 
     # Decrpting data
     img_data_encoded = aes_cipher.decrypt(request.form['IMG'])
