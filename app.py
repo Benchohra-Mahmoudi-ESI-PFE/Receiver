@@ -83,22 +83,19 @@ def upload_verifiy():
     #time.sleep(5)
 
     start_rf1 = time.time()
-
     os.system("conda run -n pytorch_main python -W ignore " + hp.integration.face_verification_path + 
     "extract_face.py --input_image " + img_file_path + 
     " --destination_dir " + hp.integration.verify_upload_folder)
-    time.sleep(1)
     print("Time to extract face : %f" % (time.time() - start_rf1))
-
-    start_rf2 = time.time()
     
+    start_rf2 = time.time()
     os.system("conda run -n vgg_py3 python -W ignore " + hp.integration.face_verification_path + 
     "identify_face.py --face_image " + os.path.splitext(img_file_path)[0]+"_visage.jpg" + " --preprocessed_dir " 
     + hp.integration.enroll_preprocessed_photo 
     + " --best_identified_faces ./")# + os.path.dirname(__file__))
-    time.sleep(5)
     print("Time to recognize face : %f" % (time.time() - start_rf2))
     
+
     # + " --restriction_list " + restriction_list
 
     #print('\n#################### cmd2 time: '+ str(time.time() - start))
