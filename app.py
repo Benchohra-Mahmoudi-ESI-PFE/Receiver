@@ -175,9 +175,22 @@ def upload_enroll():
     os.system("conda run -n voice_py3 python -W ignore "+hp.integration.speaker_verification_path+
     "verify_speaker.py --verify f --test_wav_file " + audio_file_path)
     
+    print("about to extract")
+
     os.system("conda run -n pytorch_main python " + hp.integration.face_verification_path + 
     "extract_face.py --input_image " + img_file_path + " --destination_dir "+ 
     hp.integration.enroll_preprocessed_photo)
+
+    print("below extract")
+
+    start_rf1_1 = time.time()
+
+    os.system("conda run -n vgg_py3 python -W ignore " + hp.integration.face_verification_path + 
+    "save_face_embeddings.py --input_image " + hp.integration.enroll_preprocessed_photo + os.path.splitext(aes_cipher.decrypt(request.form['photo-file-name']))[0] + "_visage.jpg"
+    " --destination_dir " + hp.integration.enroll_preprocessed_photo)
+
+    print("Time to get and save embeddings : %f" % (time.time() - start_rf1_1))
+
     
     print('\n############################# Incoming Enrollment ... #################################################')
     print('\n\tSuccessfully enrolled '+ aes_cipher.decrypt(request.form['user-lastname']) + ' ' + aes_cipher.decrypt(request.form['user-firstname']))
@@ -187,8 +200,8 @@ def upload_enroll():
     img_file_path = 'uploads_enrollment/photo/'+ aes_cipher.decrypt(request.form['photo-file-name'])
     audio_file_path = 'uploads_enrollment/audio/' + aes_cipher.decrypt(request.form['audio-file-name'])
 
-    print('\n  Audio preprocessed and saved as : \n  ' + audio_file_path)
-    print('\n  Photo preprocessed and saved as : \n  ' + img_file_path + '\n')
+    print('\n  Audio preprocessed and saved as : \n    ' + audio_file_path)
+    print('\n  Photo preprocessed and saved as : \n    ' + img_file_path + '\n')
     
     return 'Successfully enrolled'
 
