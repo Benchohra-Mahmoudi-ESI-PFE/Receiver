@@ -24,6 +24,18 @@ aes_cipher = AESCipher(key)
 # Initiating the Flask app
 app = Flask(__name__)
 
+# Setting up the database
+if hp.app.ENV == 'dev':
+    app.debug = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + hp.app.dev_db_username + ':' + hp.app.dev_db_password + '@' + hp.app.dev_host + '/' + hp.app.dev_db_name
+else:
+    app.debug = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = ''
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Getting a db instance
+db = SQLAlchemy(app)
 
 @app.route('/', methods = ['GET'])
 def home():
@@ -32,8 +44,6 @@ def home():
 @app.route('/about', methods = ['GET'])
 def about():
     return render_template('about.html')
-
-
 
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verifiy():
@@ -64,17 +74,15 @@ def upload_verifiy():
     #          , check=True)
     # print("after %f" % (time.time - start_rv))
 
-    ## commented while the error is fixed
-
-    """ os.system("conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
+    os.system("conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
     + "verify_speaker.py --verify t --test_wav_file " + audio_file_path + 
     " --best_identified_speakers ./")
 
-    with open('./speaker_result.data', 'rb') as filehandle:
+    with open('./speaker_result.data', 'wb') as filehandle:
     # read the data as binary data stream
         best_identified_speakers = pickle.load(filehandle)
 
-    print("Time to recognize voice : %f" % (time.time() - start_rv)) """
+    print("Time to recognize voice : %f" % (time.time() - start_rv))
 
     #restriction_list = [x[0] for x in best_identified_speakers]
 
@@ -87,7 +95,7 @@ def upload_verifiy():
     os.system("conda run -n pytorch_main python -W ignore " + hp.integration.face_verification_path + 
     "extract_face.py --input_image " + img_file_path + 
     " --destination_dir " + hp.integration.verify_upload_folder)
-    time.sleep(1)
+
     print("Time to extract face : %f" % (time.time() - start_rf1))
 
     start_rf2 = time.time()
@@ -96,7 +104,7 @@ def upload_verifiy():
     "identify_face.py --face_image " + os.path.splitext(img_file_path)[0]+"_visage.jpg" + " --preprocessed_dir " 
     + hp.integration.enroll_preprocessed_photo 
     + " --best_identified_faces ./")# + os.path.dirname(__file__))
-    time.sleep(5)
+
     print("Time to recognize face : %f" % (time.time() - start_rf2))
     
     # + " --restriction_list " + restriction_list
@@ -107,20 +115,20 @@ def upload_verifiy():
     # read the data as binary data stream
         best_identified_faces = pickle.load(filehandle)
 
-    """ print(best_identified_speakers)
-    print("") """
+    print(best_identified_speakers)
+    print("")
     print(best_identified_faces)
 
 
     print('\n######################################### Incoming Verification ... #################################################')
-    """ print('\n\tVerifying the speech...')
+    print('\n\tVerifying the speech...')
     id = best_identified_speakers[0][0]
     lname = id.split('_')[2]
     fname = id.split('_')[3]
     score = best_identified_speakers[0][1]
     print('\tIdentified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
     #print('\n\t\tIdentified as :  '+ str(best_identified_speakers[0]))# a[0] + ' ' + str(a[1]) for a in best_identified_speakers)
- """    
+    
     print('\n\tVerifying the face...')
     #print('\n\t\tFace :  '+ str(best_identified_faces[0]))#a[0] + ' ' + str(a[1]) for a in best_identified_faces)
     id = best_identified_faces[0][0]
@@ -129,7 +137,7 @@ def upload_verifiy():
     score = best_identified_faces[0][1]
     print('\tIdentified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
 
-    if (best_identified_faces[0][1] > hp.integration.face_threshold): # and (best_identified_speakers[0][0] == best_identified_faces[0][0]):
+    if (best_identified_faces[0][1] > hp.integration.face_threshold) and (best_identified_speakers[0][0] == best_identified_faces[0][0]):
         return_msg = 'Welcome ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
         print('\n\tIdentity confirmed successfully, ' + lname + ' ' + fname)
         #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
@@ -137,7 +145,6 @@ def upload_verifiy():
         return_msg = 'Face and voice mismatch, try again'
         print('\n\tFace and voice mismatch, waiting for retry...')
         #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
-
     else:
         return_msg = 'Not recognized'
         print('\n\t'+return_msg)
