@@ -103,6 +103,7 @@ def upload_verifiy():
     with open('./facial_result.data', 'rb') as filehandle:
     # read the data as binary data stream
         best_identified_faces = pickle.load(filehandle)
+        os.system("rm ./facial_result.data")
 
     """ print(best_identified_speakers)
     print("") """
@@ -181,8 +182,10 @@ def upload_enroll():
     print('\n############################# Incoming Enrollment ... #################################################')
     print('\n\tSuccessfully enrolled '+ aes_cipher.decrypt(request.form['user-lastname']) + ' ' + aes_cipher.decrypt(request.form['user-firstname']))
 
-    audio_file_path = 'uploads_enrollment/audio/' + os.path.splitext(aes_cipher.decrypt(request.form['audio-file-name']))[0] + '.npy'
-    img_file_path = 'uploads_enrollment/photo/'+ os.path.splitext(aes_cipher.decrypt(request.form['photo-file-name']))[0] + '_visage.jpg'
+    # audio_file_path = 'uploads_enrollment/audio/' + os.path.splitext(aes_cipher.decrypt(request.form['audio-file-name']))[0] + '.npy'
+    # img_file_path = 'uploads_enrollment/photo/'+ os.path.splitext(aes_cipher.decrypt(request.form['photo-file-name']))[0] + '_visage.jpg'
+    img_file_path = 'uploads_enrollment/photo/'+ aes_cipher.decrypt(request.form['photo-file-name'])
+    audio_file_path = 'uploads_enrollment/audio/' + aes_cipher.decrypt(request.form['audio-file-name'])
 
     print('\n  Audio preprocessed and saved as : \n  ' + audio_file_path)
     print('\n  Photo preprocessed and saved as : \n  ' + img_file_path + '\n')
