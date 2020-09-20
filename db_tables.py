@@ -6,15 +6,13 @@ from sqlalchemy import func
 class employees(db.Model):
     __tablename__ = 'employees'
     id = db.Column(db.Text, primary_key=True, default=db.session.query(func.public.generate_uid(5)).all())
-    employee_first_name = db.Column(db.String(200))
-    employee_last_name = db.Column(db.String(200))
-    employee_phone = db.Column(db.String(200))
-    employee_last_name = db.Column(db.String(200))
+    employee_first_name = db.Column(db.String(50))
+    employee_last_name = db.Column(db.String(50))
+    employee_phone = db.Column(db.String(12), , unique=True)
+    employee_proffession = db.Column(db.String(50))
+    employee_banned = db.Column(db.Integer)
+    employee_role = db.Column(db.String(200))
     
-    customer = db.Column(db.String(200), unique=True)
-    dealer = db.Column(db.String(200))
-    rating = db.Column(db.Integer)
-    comments = db.Column(db.Text())
 
     def __init__(self, customer, dealer, rating, comments):
         self.customer = customer
