@@ -19,6 +19,10 @@ from hparam import hparam as hp
 from aes_utils import AESCipher
 
 key = 'this is my key'
+key = 'this is my key'
+key = 'this is my key'
+key = 'this is my key'
+aes_cipher = AESCipher(key)
 aes_cipher = AESCipher(key)
 
 # Initiating the Flask app
