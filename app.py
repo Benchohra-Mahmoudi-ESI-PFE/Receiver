@@ -8,14 +8,18 @@ import numpy
 import base64
 import time
 import pickle
-import sys
 import subprocess
 
-# insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '../Speaker_Verification_Vox1/')
+import sys
+sys.path.insert(1, '../config')
 from hparam import hparam as hp
 
+
+# import importlib
+# importlib.import_module("")
+
 #sys.path.append(".")
+
 from aes_utils import AESCipher
 
 key = 'this is my key'
@@ -98,7 +102,6 @@ def upload_verify():
     #restriction_list = [x[0] for x in best_identified_speakers]
     #print(restriction_list)
     #time.sleep(5)
-
 
 
     start_rf1 = time.time()
