@@ -245,7 +245,7 @@ def upload_enroll():
 
     print('\n Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
     
-    return 'Successfully enrolled'
+    return 'Inscription réussie'
 
 
 if __name__ == '__main__':
