@@ -151,17 +151,18 @@ def upload_verify():
     print('\tIdentified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
 
     if (best_identified_faces[0][1] > hp.integration.face_threshold): # and (best_identified_speakers[0][0] == best_identified_faces[0][0]):
-        return_msg = 'Welcome ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
+        return_msg = 'Bienvenu, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
         print('\n\tIdentity confirmed successfully, ' + lname + ' ' + fname)
         #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
     elif (best_identified_speakers[0][0] != best_identified_faces[0][0]):
-        return_msg = 'Face and voice mismatch, try again'
+        return_msg = 'Partiellement reconnu, réessayez'
         print('\n\tFace and voice mismatch, waiting for retry...')
         #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
 
     else:
-        return_msg = 'Not recognized'
-        print('\n\t' + return_msg)
+        return_msg = 'Non reconnu'
+        print('\n\t' + 'Not recognized')
+
 
 
     print('\n\n')
