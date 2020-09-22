@@ -151,7 +151,7 @@ def upload_verify():
     print('\tIdentified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
 
     if (best_identified_faces[0][1] > hp.integration.face_threshold): # and (best_identified_speakers[0][0] == best_identified_faces[0][0]):
-        return_msg = 'Bienvenu, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
+        return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
         print('\n\tIdentity confirmed successfully, ' + lname + ' ' + fname)
         #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
     elif (best_identified_speakers[0][0] != best_identified_faces[0][0]):
