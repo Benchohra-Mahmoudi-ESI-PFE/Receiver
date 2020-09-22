@@ -48,7 +48,7 @@ def about():
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verify():
 
-    print('\n######################################### Incoming Verification ... #################################################')
+    print('\n ########################### Incoming Verification ... ###########################')
 
     if not request.form['IMG'] \
     or not request.form['AUDIO'] \
@@ -180,7 +180,7 @@ def upload_verify():
 @app.route('/upload_enrollment', methods = [ 'POST'])
 def upload_enroll():
     
-    print('\n############################# Incoming Enrollment ... #################################################')
+    print('\n ########################### Incoming Enrollment ... ###########################')
 
     if not request.form['IMG'] \
     or not request.form['AUDIO'] \
@@ -190,7 +190,7 @@ def upload_enroll():
         return 'Données non complètes'
 
 
-    # Decrpting data
+    # Decrypting data
     img_data_encoded = aes_cipher.decrypt(request.form['IMG'])
     audio_data_encoded = aes_cipher.decrypt(request.form['AUDIO'])
     fname = aes_cipher.decrypt(request.form['user-firstname'])
