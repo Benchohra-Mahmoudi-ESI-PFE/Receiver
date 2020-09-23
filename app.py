@@ -71,9 +71,6 @@ def upload_verify():
     with open(audio_file_path, 'wb') as f:
         f.write(audio_data)
 
-    """ os.system("conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
-    + "verify_speaker.py --verify t --test_wav_file " + audio_file_path + 
-    " --best_identified_speakers ./") """
 
     start_rv = time.time()
     err_code_rv = os.system("conda run -n voice_py3 python " 
@@ -83,13 +80,13 @@ def upload_verify():
                                 + " --best_identified_speakers ./")
     print("Time to recognize voice : %f" % (time.time() - start_rv))
 
-    # read the data as binary data stream
+    # Read the data as binary data stream
     with open('./speaker_result.data', 'rb') as filehandle:
         best_identified_speakers = pickle.load(filehandle)
 
-    """ Delete user data if succeessfully identified
+    # Delete user data if succeessfully identified
     if (err_code_rv == 0):
-        os.system("rm " + "./speaker_result.data" + " " + audio_file_path) """
+        os.system("rm " + "./speaker_result.data " + audio_file_path)
 
     """ restriction_list = [x[0] for x in best_identified_speakers]
     print(restriction_list) """
