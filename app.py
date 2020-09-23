@@ -42,6 +42,8 @@ def about():
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verify():
 
+    start_rec = time.time()
+
     print('\n\n\n\n ########################### Incoming Verification ... ########################### \n')
 
     if not request.form['IMG'] \
@@ -142,13 +144,16 @@ def upload_verify():
         os.system("rm " + "./speaker_result.data " + " " + audio_file_path)
         os.system("rm " + "./facial_result.data" + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
-        print('\n\t Identity confirmed successfully, ' + lname + ' ' + fname)
+        print('\n     Identity confirmed successfully, ' + lname + ' ' + fname)
     elif (best_identified_speakers[0][0] != best_identified_faces[0][0]):
         return_msg = 'Partiellement reconnu, réessayez'
         print('\n\t Face and voice mismatch, waiting for retry...')
     else:
         return_msg = 'Non reconnu'
         print('\n\t' + 'Not recognized')
+
+
+    print("\n     Global recognition time : %f" % (time.time() - start_rec))
 
     print("\n Ordered list of speakers :")
     print(best_identified_speakers)
