@@ -72,32 +72,45 @@ def upload_verify():
         f.write(audio_data)
 
 
+    # -----------------------------------
+    print('\n    Verifying the voice...')
+    # -----------------------------------
+
     start_rv = time.time()
     err_code_rv = os.system("conda run -n voice_py3 python " 
                                 + hp.integration.speaker_verification_path + "verify_speaker.py" 
                                 + " --verify t " 
                                 + " --test_wav_file " + audio_file_path
                                 + " --best_identified_speakers ./")
-    print("Time to recognize voice : %f" % (time.time() - start_rv))
+    print("\t Time to recognize voice : %f" % (time.time() - start_rv))
 
-    # Read the data as binary data stream
+    if (err_code_rv == 0):
+        # Clean execution of voice extraction module
+        pass
+        
     with open('./speaker_result.data', 'rb') as filehandle:
         best_identified_speakers = pickle.load(filehandle)
 
-    # Delete user data if succeessfully identified
-    if (err_code_rv == 0):
-        os.system("rm " + "./speaker_result.data " + audio_file_path)
+    id = best_identified_speakers[0][0]
+    score = best_identified_speakers[0][1]
+    lname = id.split('_')[2]
+    fname = id.split('_')[3]
+    print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
+    
+    # restriction_list = [x[0] for x in best_identified_speakers]
+    # print(restriction_list)
 
-    """ restriction_list = [x[0] for x in best_identified_speakers]
-    print(restriction_list) """
 
+    # -----------------------------------
+    print('\n     Verifying the face...')
+    # -----------------------------------
 
     start_rf1 = time.time()
     err_code_rf1 = os.system("conda run -n pytorch_main python " 
                                 + hp.integration.face_verification_path + "extract_face.py" 
                                 + " --input_image " + img_file_path 
                                 + " --destination_dir " + hp.integration.verify_upload_folder)
-    print("Time to extract face : %f" % (time.time() - start_rf1))
+    print("\t Time to extract face : %f" % (time.time() - start_rf1))
 
     
     start_rf2 = time.time()
@@ -106,56 +119,46 @@ def upload_verify():
                                 + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
                                 + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
                                 + " --best_identified_faces ./")
-    print("Time to recognize face : %f" % (time.time() - start_rf2))
+    print("\t Time to recognize face : %f" % (time.time() - start_rf2))
 
-    # read the data as binary data stream
+    if (err_code_rf1 + err_code_rf2 == 0):
+        #Clean execution of face extraction and face identification modules
+        pass
+    
     with open('./facial_result.data', 'rb') as filehandle:
         best_identified_faces = pickle.load(filehandle)
-    
-    # Delete user data if succeessfully identified
-    if (err_code_rf1 + err_code_rf2 == 0):
-        os.system("rm " + "./facial_result.data" + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
 
-
-    print(best_identified_speakers)
-    print("")
-    print(best_identified_faces)
-
-
-    print('\n\t Verifying the voice...')
-    id = best_identified_speakers[0][0]
-    score = best_identified_speakers[0][1]
-    lname = id.split('_')[2]
-    fname = id.split('_')[3]
-    print('\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
-    #print('\n\t\tIdentified as :  '+ str(best_identified_speakers[0]))# a[0] + ' ' + str(a[1]) for a in best_identified_speakers)
-
-
-    print('\n\t Verifying the face...')
-    #print('\n\t\tFace :  '+ str(best_identified_faces[0]))#a[0] + ' ' + str(a[1]) for a in best_identified_faces)
     id = best_identified_faces[0][0]
     score = best_identified_faces[0][1]
     lname = id.split('_')[2]
     fname = id.split('_')[3]
-    print('\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
-
+    print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
+    
+    # -----------------------------------
+    # -----------------------------------
 
     if (best_identified_faces[0][1] > hp.integration.face_threshold): # and (best_identified_speakers[0][0] == best_identified_faces[0][0]):
+        # Delete user data since succeessfully identified
+        os.system("rm " + "./speaker_result.data " + " " + audio_file_path)
+        os.system("rm " + "./facial_result.data" + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
         print('\n\t Identity confirmed successfully, ' + lname + ' ' + fname)
-        #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
     elif (best_identified_speakers[0][0] != best_identified_faces[0][0]):
         return_msg = 'Partiellement reconnu, réessayez'
         print('\n\t Face and voice mismatch, waiting for retry...')
-        #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
     else:
         return_msg = 'Non reconnu'
         print('\n\t' + 'Not recognized')
 
+    print("\n Ordered list of speakers :")
+    print(best_identified_speakers)
+    print("\n Ordered list of faces :")
+    print(best_identified_faces)
 
 
     print('\n\n')
     return return_msg
+
 
 
 ##################################################################################################################################
