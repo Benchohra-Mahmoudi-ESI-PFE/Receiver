@@ -42,7 +42,7 @@ def about():
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verify():
 
-    print('\n\n\n\n ########################### Incoming Verification ... ###########################')
+    print('\n\n\n\n ########################### Incoming Verification ... ########################### \n')
 
     if not request.form['IMG'] \
     or not request.form['AUDIO'] \
@@ -70,32 +70,29 @@ def upload_verify():
     audio_file_path = hp.integration.verify_upload_folder + audio_file_name
     with open(audio_file_path, 'wb') as f:
         f.write(audio_data)
-        
-
-    start_rv = time.time()
-    # print(start_rv)
-
-    # _ = subprocess.run(["conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
-    #              + "verify_speaker.py --verify t --test_wav_file " + audio_file_path
-    #              + " --best_identified_speakers ./"]
-    #          , check=True)
-    # print("after %f" % (time.time - start_rv))
-
-    ## commented while the error is fixed
 
     """ os.system("conda run -n voice_py3 python -W ignore " + hp.integration.speaker_verification_path
     + "verify_speaker.py --verify t --test_wav_file " + audio_file_path + 
-    " --best_identified_speakers ./")
+    " --best_identified_speakers ./") """
 
-    with open('./speaker_result.data', 'rb') as filehandle:
+    start_rv = time.time()
+    err_code_rv = os.system("conda run -n voice_py3 python " 
+                                + hp.integration.speaker_verification_path + "verify_speaker.py" 
+                                + " --verify t " 
+                                + " --test_wav_file " + audio_file_path
+                                + " --best_identified_speakers ./")
+    print("Time to recognize voice : %f" % (time.time() - start_rv))
+
     # read the data as binary data stream
+    with open('./speaker_result.data', 'rb') as filehandle:
         best_identified_speakers = pickle.load(filehandle)
 
-    print("Time to recognize voice : %f" % (time.time() - start_rv)) """
+    """ Delete user data if succeessfully identified
+    if (err_code_rv == 0):
+        os.system("rm " + "./speaker_result.data" + " " + audio_file_path) """
 
-    #restriction_list = [x[0] for x in best_identified_speakers]
-    #print(restriction_list)
-    #time.sleep(5)
+    """ restriction_list = [x[0] for x in best_identified_speakers]
+    print(restriction_list) """
 
 
     start_rf1 = time.time()
@@ -123,36 +120,37 @@ def upload_verify():
         os.system("rm " + "./facial_result.data" + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
 
 
-    """ print(best_identified_speakers)
-    print("") """
+    print(best_identified_speakers)
+    print("")
     print(best_identified_faces)
 
 
-    """ print('\n\tVerifying the speech...')
+    print('\n\t Verifying the voice...')
     id = best_identified_speakers[0][0]
+    score = best_identified_speakers[0][1]
     lname = id.split('_')[2]
     fname = id.split('_')[3]
-    score = best_identified_speakers[0][1]
-    print('\tIdentified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
+    print('\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
     #print('\n\t\tIdentified as :  '+ str(best_identified_speakers[0]))# a[0] + ' ' + str(a[1]) for a in best_identified_speakers)
- """    
-    print('\n\tVerifying the face...')
+
+
+    print('\n\t Verifying the face...')
     #print('\n\t\tFace :  '+ str(best_identified_faces[0]))#a[0] + ' ' + str(a[1]) for a in best_identified_faces)
     id = best_identified_faces[0][0]
+    score = best_identified_faces[0][1]
     lname = id.split('_')[2]
     fname = id.split('_')[3]
-    score = best_identified_faces[0][1]
-    print('\tIdentified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
+    print('\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
+
 
     if (best_identified_faces[0][1] > hp.integration.face_threshold): # and (best_identified_speakers[0][0] == best_identified_faces[0][0]):
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
-        print('\n\tIdentity confirmed successfully, ' + lname + ' ' + fname)
+        print('\n\t Identity confirmed successfully, ' + lname + ' ' + fname)
         #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
     elif (best_identified_speakers[0][0] != best_identified_faces[0][0]):
         return_msg = 'Partiellement reconnu, réessayez'
-        print('\n\tFace and voice mismatch, waiting for retry...')
+        print('\n\t Face and voice mismatch, waiting for retry...')
         #print('\n ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + '  ' + str(best_identified_faces[0][1]) + ' ' + str(best_identified_speakers[0][1]))
-
     else:
         return_msg = 'Non reconnu'
         print('\n\t' + 'Not recognized')
@@ -174,7 +172,7 @@ def upload_verify():
 @app.route('/upload_enrollment', methods = [ 'POST'])
 def upload_enroll():
     
-    print('\n\n\n\n ########################### Incoming Enrollment ... ###########################')
+    print('\n\n\n\n ########################### Incoming Enrollment ... ########################### \n')
 
     if not request.form['IMG'] \
     or not request.form['AUDIO'] \
