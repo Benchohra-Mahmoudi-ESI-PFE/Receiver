@@ -12,7 +12,7 @@ import sys
 import subprocess
 
 # insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '../Speaker_Verification_Vox1/')
+sys.path.insert(1, '../config/')
 from hparam import hparam as hp
 
 #sys.path.append(".")
