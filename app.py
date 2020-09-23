@@ -24,6 +24,20 @@ aes_cipher = AESCipher(key)
 # Initiating the Flask app
 app = Flask(__name__)
 
+# Configuring the database connection
+if hp.app.ENV == 'dev':
+    app.debug = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + \
+    hp.app.dev_db_username + ':' + \
+    hp.app.dev_db_password + '@' + \
+    hp.app.dev_db_host +  ':5432' +'/' + \
+    hp.app.dev_db_name
+else:
+    app.debug = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = ''
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 
 @app.route('/', methods = ['GET'])
 def home():
