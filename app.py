@@ -74,9 +74,9 @@ def upload_verify():
         f.write(audio_data)
 
 
-    # -----------------------------------
+    # -------------------------------------
     print('\n    Verifying the voice...')
-    # -----------------------------------
+    # -------------------------------------
 
     start_rv = time.time()
     err_code_rv = os.system("conda run -n voice_py3 python " 
@@ -92,6 +92,7 @@ def upload_verify():
         
     with open('./speaker_result.data', 'rb') as filehandle:
         best_identified_speakers = pickle.load(filehandle)
+        os.system("rm ./speaker_result.data")
 
     id = best_identified_speakers[0][0]
     score = best_identified_speakers[0][1]
@@ -103,9 +104,9 @@ def upload_verify():
     # print(restriction_list)
 
 
-    # -----------------------------------
+    # -------------------------------------
     print('\n     Verifying the face...')
-    # -----------------------------------
+    # -------------------------------------
 
     start_rf1 = time.time()
     err_code_rf1 = os.system("conda run -n pytorch_main python " 
@@ -129,6 +130,7 @@ def upload_verify():
     
     with open('./facial_result.data', 'rb') as filehandle:
         best_identified_faces = pickle.load(filehandle)
+        os.system("rm ./facial_result.data")
 
     id = best_identified_faces[0][0]
     score = best_identified_faces[0][1]
@@ -136,21 +138,43 @@ def upload_verify():
     fname = id.split('_')[3]
     print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
     
+    
     # -----------------------------------
+    #              DECISION
     # -----------------------------------
 
-    if (best_identified_faces[0][1] > hp.integration.face_threshold): # and (best_identified_speakers[0][0] == best_identified_faces[0][0]):
+    threshold_face = float(hp.integration.face_threshold)
+    threshold_voice = float(hp.integration.voice_threshold)
+    threshold_general = (threshold_face + threshold_voice)/2
+
+    top_face_id = best_identified_faces[0][0]
+    top_voice_id = best_identified_speakers[0][0]
+    
+    weight_face = 0.5
+    # weight_face = hp.integration.weight_face
+    weight_voice = 0.5
+    # weight_voice = hp.integration.weight_voice
+
+    top_face_acc = best_identified_faces[0][1]
+    top_voice_acc = best_identified_speakers[0][1]
+    general_acc = weight_face*threshold_face + weight_voice*threshold_voice
+
+    if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
+                                     and (top_voice_id >= threshold_voice) \
+                                     and (general_acc >= threshold_general):
+
         # Delete user data since succeessfully identified
-        os.system("rm " + "./speaker_result.data " + " " + audio_file_path)
-        os.system("rm " + "./facial_result.data" + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
+        os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
         print('\n     Identity confirmed successfully, ' + lname + ' ' + fname)
-    elif (best_identified_speakers[0][0] != best_identified_faces[0][0]):
-        return_msg = 'Partiellement reconnu, réessayez'
-        print('\n\t Face and voice mismatch, waiting for retry...')
-    else:
+
+    elif (top_face_acc < threshold_face) and (top_voice_id < threshold_voice):
         return_msg = 'Non reconnu'
         print('\n\t' + 'Not recognized')
+
+    else: # Includes (top_face_id != top_voice_id)
+        return_msg = 'Partiellement reconnu, réessayez'
+        print('\n\t Face and voice mismatch, waiting for retry...')
 
 
     print("\n     Global recognition time : %f" % (time.time() - start_rec))
