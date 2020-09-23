@@ -14,12 +14,6 @@ import sys
 sys.path.insert(1, '../config')
 from hparam import hparam as hp
 
-
-# import importlib
-# importlib.import_module("")
-
-#sys.path.append(".")
-
 from aes_utils import AESCipher
 
 key = 'this is my key'
@@ -48,7 +42,7 @@ def about():
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verify():
 
-    print('\n ########################### Incoming Verification ... ###########################')
+    print('\n\n\n\n ########################### Incoming Verification ... ###########################')
 
     if not request.form['IMG'] \
     or not request.form['AUDIO'] \
@@ -180,7 +174,7 @@ def upload_verify():
 @app.route('/upload_enrollment', methods = [ 'POST'])
 def upload_enroll():
     
-    print('\n ########################### Incoming Enrollment ... ###########################')
+    print('\n\n\n\n ########################### Incoming Enrollment ... ###########################')
 
     if not request.form['IMG'] \
     or not request.form['AUDIO'] \
