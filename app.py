@@ -83,15 +83,14 @@ def upload_verify():
 
     def verify_speaker():
 
-        print("------------------------ in thread voice") # --------------------------------
-        # global start_rv
+        print('\t Verifying the voice...')
+        # print("------------------------ in thread voice") # --------------------------------
         start_rv = time.time()
         err_code_rv = os.system("conda run -n voice_py3 python " 
                                     + hp.integration.speaker_verification_path + "verify_speaker.py" 
                                     + " --verify t " 
                                     + " --test_wav_file " + audio_file_path
                                     + " --best_identified_speakers ./")
-        # global end_rv
         end_rv = time.time() - start_rv                                    
 
         if (err_code_rv == 0):
@@ -107,10 +106,8 @@ def upload_verify():
         score = best_identified_speakers[0][1]
         lname_voice = id.split('_')[2]
         fname_voice = id.split('_')[3]
-        print("\t Time to recognize voice : %f" % end_rv)
-        print('\n\t Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
-
-        print("------------------------ out thread voice") # --------------------------------
+        print('\t Time to recognize voice : %f' % (end_rv) 
+            + '\n\t Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
 
     thread_voice = threading.Thread(target=verify_speaker)
     thread_voice.start()
@@ -121,30 +118,28 @@ def upload_verify():
     # -------------------------------------
 
     def extract_face_and_identify():
-        print("------------------------ in thread face") # --------------------------------
+
+        print('\t Verifying the face...')
+
         # Extracting face
-        # global start_rf1
         start_rf1 = time.time()
         err_code_rf1 = os.system("conda run -n pytorch_main python " 
                                     + hp.integration.face_verification_path + "extract_face.py" 
                                     + " --input_image " + img_file_path 
                                     + " --destination_dir " + hp.integration.verify_upload_folder)
-        # global end_rf1
         end_rf1 = time.time() - start_rf1
 
         # Identifying face
-        # global start_rf2
         start_rf2 = time.time()
         err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
                                     + hp.integration.face_verification_path + "identify_face.py" 
                                     + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
                                     + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
                                     + " --best_identified_faces ./")
-        # global end_rf2
         end_rf2 = time.time() - start_rf2
 
         if (err_code_rf1 + err_code_rf2 == 0):
-            #Clean execution of face extraction and face identification modules
+            # Clean execution of face extraction and face identification modules
             pass
 
         with open('./facial_result.data', 'rb') as filehandle:
@@ -156,11 +151,11 @@ def upload_verify():
         score = best_identified_faces[0][1]
         lname_face = id.split('_')[2]
         fname_face = id.split('_')[3]
-        print("\t Time to extract face : %f" % end_rf1)
-        print("\t Time to recognize face : %f" % end_rf2)
-        print('\n\t Identified the face as : %s %s - (precision : %d%%)' % (lname_face, fname_face, int(100*score)))
 
-        print("------------------------ out thread face") # --------------------------------
+        print('\t - Time to recognize face (total) : %f' % (end_rf1 + end_rf2) 
+            + '\n\t\t # Face extraction : %f' % (end_rf1) 
+            + '\n\t\t # Face identification : %f' % (end_rf2) 
+            + '\n\t - Identified the face as : %s %s - (precision : %d%%)' % (lname_face, fname_face, int(100*score)))
 
     thread_face = threading.Thread(target=extract_face_and_identify)
     thread_face.start()
@@ -179,12 +174,10 @@ def upload_verify():
     # Waiting for threads execution to finish
     thread_voice.join()
     thread_face.join()
-    print("------------------------ all threads done") # --------------------------------
 
     # Always delete user data, for debugging purposes, remove this line for production & restore the one below
     os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         
-
     threshold_face = float(hp.integration.face_threshold)
     threshold_voice = float(hp.integration.voice_threshold)
     threshold_general = (threshold_face + threshold_voice)/2
