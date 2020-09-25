@@ -171,7 +171,7 @@ def upload_verify():
         # Delete user data since succeessfully identified
         #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
-        print('\n     Identity confirmed successfully, %s %s - (precision globale : %d%%)' % (lname, fname, int(100*general_acc)))
+        print('\n     Identity confirmed successfully, %s %s - (global precision : %d%%)' % (lname, fname, int(100*general_acc)))
 
     elif (top_face_acc < threshold_face) and (top_voice_id < threshold_voice):
         return_msg = 'Non reconnu'
