@@ -125,7 +125,7 @@ def upload_verify():
     print("\t Time to recognize face : %f" % (time.time() - start_rf2))
 
     if (err_code_rf1 + err_code_rf2 == 0):
-        #Clean execution of face extraction and face identification modules
+        # Clean execution of face extraction and face identification modules
         pass
     
     with open('./facial_result.data', 'rb') as filehandle:
@@ -146,17 +146,20 @@ def upload_verify():
     # Always delete user data, for debugging purposes, remove this line for production & restore the one below
     os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         
-
+    # Retrieving threshold values from config file
     threshold_face = float(hp.integration.face_threshold)
     threshold_voice = float(hp.integration.voice_threshold)
     threshold_general = (threshold_face + threshold_voice)/2
 
+    # Accessing recognition results from the modules
     top_face_id = best_identified_faces[0][0]
     top_voice_id = best_identified_speakers[0][0]
     
+    # Retrieving the importance weights for face & voice
     weight_face = hp.integration.weight_face
     weight_voice = hp.integration.weight_voice
 
+     # Accessing best candidates & calculating the dynamic decision function
     top_face_acc = best_identified_faces[0][1]
     top_voice_acc = best_identified_speakers[0][1]
     general_acc = round(weight_face*top_face_acc + weight_voice*top_voice_acc, 2)
@@ -239,6 +242,7 @@ def upload_enroll():
     with open(audio_file_path, 'wb') as f:
         f.write(audio_data)
 
+    # Extracting & saving voice embeddings
     start_rv = time.time()
     err_code_rv = os.system("conda run -n voice_py3 python -W ignore " 
                                 + hp.integration.speaker_verification_path + "verify_speaker.py" 
@@ -246,6 +250,7 @@ def upload_enroll():
                                 + " --test_wav_file " + audio_file_path)
     print("Time to extract voice embeddings : %f" % (time.time() - start_rv))
 
+    # Extracting & saving face 
     start_rf1 = time.time()
     err_code_rf1 = os.system("conda run -n pytorch_main python -W ignore " 
                                 + hp.integration.face_verification_path + "extract_face.py" 
@@ -253,6 +258,7 @@ def upload_enroll():
                                 + " --destination_dir " + hp.integration.enroll_upload_photo_folder)
     print("Time to extract face : %f" % (time.time() - start_rf1))
 
+    # Extracting & saving facea embeddings 
     start_rf1_1 = time.time()
     input_face_image = hp.integration.enroll_upload_photo_folder + img_file_name.replace(".jpg", "_visage.jpg")
     err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
