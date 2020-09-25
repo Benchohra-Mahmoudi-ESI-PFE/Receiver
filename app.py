@@ -154,10 +154,8 @@ def upload_verify():
     top_face_id = best_identified_faces[0][0]
     top_voice_id = best_identified_speakers[0][0]
     
-    weight_face = 0.5
-    # weight_face = hp.integration.weight_face
-    weight_voice = 0.5
-    # weight_voice = hp.integration.weight_voice
+    weight_face = hp.integration.weight_face
+    weight_voice = hp.integration.weight_voice
 
     top_face_acc = best_identified_faces[0][1]
     top_voice_acc = best_identified_speakers[0][1]
