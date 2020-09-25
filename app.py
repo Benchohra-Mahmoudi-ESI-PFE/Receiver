@@ -143,6 +143,10 @@ def upload_verify():
     #              DECISION
     # -----------------------------------
 
+    # Always delete user data, for debugging purposes, remove this line for production & restore the one below
+    os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
+        
+
     threshold_face = float(hp.integration.face_threshold)
     threshold_voice = float(hp.integration.voice_threshold)
     threshold_general = (threshold_face + threshold_voice)/2
@@ -157,16 +161,17 @@ def upload_verify():
 
     top_face_acc = best_identified_faces[0][1]
     top_voice_acc = best_identified_speakers[0][1]
-    general_acc = weight_face*threshold_face + weight_voice*threshold_voice
+    general_acc = round(weight_face*top_face_acc + weight_voice*top_voice_acc, 2)
+
 
     if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
-                                     and (top_voice_id >= threshold_voice) \
+                                     and (top_voice_acc >= threshold_voice) \
                                      and (general_acc >= threshold_general):
 
         # Delete user data since succeessfully identified
-        os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
+        #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
-        print('\n     Identity confirmed successfully, ' + lname + ' ' + fname)
+        print('\n     Identity confirmed successfully, %s %s - (precision globale : %d%%)' % (lname, fname, int(100*general_acc)))
 
     elif (top_face_acc < threshold_face) and (top_voice_id < threshold_voice):
         return_msg = 'Non reconnu'
