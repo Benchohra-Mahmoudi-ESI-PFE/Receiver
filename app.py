@@ -8,7 +8,8 @@ import numpy
 import base64
 import time
 import pickle
-import subprocess
+import threading
+
 
 import sys
 sys.path.insert(1, '../config')
@@ -42,6 +43,7 @@ def about():
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verify():
 
+    start_rv = 0
     start_rec = time.time()
 
     print('\n\n\n\n ########################### Incoming Verification ... ########################### \n')
@@ -75,70 +77,102 @@ def upload_verify():
 
 
     # -------------------------------------
-    print('\n    Verifying the voice...')
+    #          Voice Verification
     # -------------------------------------
 
-    start_rv = time.time()
-    err_code_rv = os.system("conda run -n voice_py3 python " 
-                                + hp.integration.speaker_verification_path + "verify_speaker.py" 
-                                + " --verify t " 
-                                + " --test_wav_file " + audio_file_path
-                                + " --best_identified_speakers ./")
-    print("\t Time to recognize voice : %f" % (time.time() - start_rv))
+    def verify_speaker():
 
-    if (err_code_rv == 0):
-        # Clean execution of voice extraction module
-        pass
+        global start_rv
+        start_rv = time.time()
+        err_code_rv = os.system("conda run -n voice_py3 python " 
+                                    + hp.integration.speaker_verification_path + "verify_speaker.py" 
+                                    + " --verify t " 
+                                    + " --test_wav_file " + audio_file_path
+                                    + " --best_identified_speakers ./")
+        global end_rv
+        end_rv = time.time() - start_rv                                    
+
+        if (err_code_rv == 0):
+            # Clean execution of voice extraction module
+            pass
+
+        with open('./speaker_result.data', 'rb') as filehandle:
+            best_identified_speakers = pickle.load(filehandle)
+            os.system("rm ./speaker_result.data")
         
-    with open('./speaker_result.data', 'rb') as filehandle:
-        best_identified_speakers = pickle.load(filehandle)
-        os.system("rm ./speaker_result.data")
+        id = best_identified_speakers[0][0]
+        score = best_identified_speakers[0][1]
+        lname = id.split('_')[2]
+        fname = id.split('_')[3]
 
-    id = best_identified_speakers[0][0]
-    score = best_identified_speakers[0][1]
-    lname = id.split('_')[2]
-    fname = id.split('_')[3]
-    print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
-    
-    # restriction_list = [x[0] for x in best_identified_speakers]
-    # print(restriction_list)
+
+    thread_voice = threading.Thread(target=verify_speaker)
+    thread_voice.start()
 
 
     # -------------------------------------
-    print('\n     Verifying the face...')
+    #           Face Verification
     # -------------------------------------
 
-    start_rf1 = time.time()
-    err_code_rf1 = os.system("conda run -n pytorch_main python " 
-                                + hp.integration.face_verification_path + "extract_face.py" 
-                                + " --input_image " + img_file_path 
-                                + " --destination_dir " + hp.integration.verify_upload_folder)
-    print("\t Time to extract face : %f" % (time.time() - start_rf1))
+    def extract_face_and_identify():
+
+        # Extracting face
+        global start_rf1
+        start_rf1 = time.time()
+        err_code_rf1 = os.system("conda run -n pytorch_main python " 
+                                    + hp.integration.face_verification_path + "extract_face.py" 
+                                    + " --input_image " + img_file_path 
+                                    + " --destination_dir " + hp.integration.verify_upload_folder)
+        global end_rv
+        end_rf1 = time.time() - start_rf1
+
+        # Identifying face
+        global start_rf2
+        start_rf2 = time.time()
+        err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
+                                    + hp.integration.face_verification_path + "identify_face.py" 
+                                    + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
+                                    + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
+                                    + " --best_identified_faces ./")
+        global end_rf2
+        end_rf2 = time.time() - start_rf2
+
+        if (err_code_rf1 + err_code_rf2 == 0):
+            #Clean execution of face extraction and face identification modules
+            pass
+
+        with open('./facial_result.data', 'rb') as filehandle:
+            best_identified_faces = pickle.load(filehandle)
+            os.system("rm ./facial_result.data")
+    
+        id = best_identified_faces[0][0]
+        score = best_identified_faces[0][1]
+        lname = id.split('_')[2]
+        fname = id.split('_')[3]
+
+
+    thread_face = threading.Thread(target=extract_face_and_identify)
+    thread_face.start()
+
+
+    # -----------------------------------
+    #              RESULTS
+    # -----------------------------------
 
     
-    start_rf2 = time.time()
-    err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
-                                + hp.integration.face_verification_path + "identify_face.py" 
-                                + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
-                                + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
-                                + " --best_identified_faces ./")
-    print("\t Time to recognize face : %f" % (time.time() - start_rf2))
+    # Waiting for the  threads to finish
+    thread_voice.join()
+    thread_face.join()
 
-    if (err_code_rf1 + err_code_rf2 == 0):
-        #Clean execution of face extraction and face identification modules
-        pass
+    print("\t Time to recognize voice : %f" % end_rv)
+    print("\t Time to extract face : %f" % end_rf1)
+    print("\t Time to recognize face : %f" % end_rf2)
     
-    with open('./facial_result.data', 'rb') as filehandle:
-        best_identified_faces = pickle.load(filehandle)
-        os.system("rm ./facial_result.data")
-
-    id = best_identified_faces[0][0]
-    score = best_identified_faces[0][1]
-    lname = id.split('_')[2]
-    fname = id.split('_')[3]
+    print('\n    Verifying the voice...')
     print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
-    
-    
+    print('\n    Verifying the face...')
+    print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
+
     # -----------------------------------
     #              DECISION
     # -----------------------------------
