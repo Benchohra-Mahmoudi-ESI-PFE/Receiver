@@ -1,8 +1,11 @@
+import time
+start = time.time()
+
 import argparse
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--input_wav')
+parser.add_argument('--input_m4a')
 args = parser.parse_args()
 
 def word_to_num(s):
@@ -27,21 +30,28 @@ def words_to_digits(words_list):
     return digits
     
 
+os.system("ffmpeg -loglevel quiet -i " + args.input_m4a + " audio_file.wav")
 os.system("deepspeech" 
         + " --model deepspeech_model.pbmm " 
         + " --scorer deepspeech_model.scorer " 
-        + " --audio " + args.input_wav 
+        + " --audio  audio_file.wav "
         + "  > speech-to-text_result 2>&1")
 
 with open("speech-to-text_result", 'rt') as f:
     lines = f.readlines()
-os.system("rm speech-to-text_result")
 
-time = lines[-2].replace("Inference", "Speech text recognition")
+os.system("rm speech-to-text_result")
+# os.system("rm converting_output")
+os.system("rm audio_file.wav")
+
+inference_time = lines[-2].replace("Inference", "Speech text recognition").replace("\n", "")
 speech_full = lines[-1]
 door_number_words = speech_full.replace("\n", "").split(" ")[-4:]
 
-print("\n - Speech text recognition took : " + time)
-print("\n - Door number (words) : " + str(door_number_words))
-print("\n - Door number (digits) : " + words_to_digits(door_number_words))
+print("\n - Speech text recognition took : %s" % inference_time)
+print("\n - Door number (words) : %s" % str(door_number_words))
+print("\n - Door number (digits) : %s" % words_to_digits(door_number_words))
+
+
+print("\n\n\t - Total execution time : %s \n" % (time.time() - start))
 
