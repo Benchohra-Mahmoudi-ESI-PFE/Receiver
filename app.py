@@ -91,7 +91,7 @@ def upload_verify():
                                     + " --verify t " 
                                     + " --test_wav_file " + audio_file_path
                                     + " --best_identified_speakers ./")
-        end_rv = time.time() - start_rv                                    
+        end_rv = time.time() - start_rv
 
         if (err_code_rv == 0):
             # Clean execution of voice extraction module
@@ -106,8 +106,8 @@ def upload_verify():
         score = best_identified_speakers[0][1]
         lname_voice = id.split('_')[2]
         fname_voice = id.split('_')[3]
-        print('\t Time to recognize voice : %f' % (end_rv) 
-            + '\n\t Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
+        print('\n\t - Time to recognize voice : %f' % (end_rv) 
+            + '\n\t - Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
 
     thread_voice = threading.Thread(target=verify_speaker)
     thread_voice.start()
@@ -152,20 +152,14 @@ def upload_verify():
         lname_face = id.split('_')[2]
         fname_face = id.split('_')[3]
 
-        print('\t - Time to recognize face (total) : %f' % (end_rf1 + end_rf2) 
+        print('\n\t - Time to recognize face (total) : %f' % (end_rf1 + end_rf2) 
             + '\n\t\t # Face extraction : %f' % (end_rf1) 
             + '\n\t\t # Face identification : %f' % (end_rf2) 
             + '\n\t - Identified the face as : %s %s - (precision : %d%%)' % (lname_face, fname_face, int(100*score)))
 
     thread_face = threading.Thread(target=extract_face_and_identify)
     thread_face.start()
-
-
-    # -----------------------------------
-    #              RESULTS
-    # -----------------------------------
     
-
 
     # -----------------------------------
     #              DECISION
@@ -310,9 +304,9 @@ def upload_enroll():
     #     os.system("rm " + img_file_path + " " + input_face_image)
 
 
-    print('\n Successfully enrolled ' + lname + ' ' + fname)
+    print('\n\t - Successfully enrolled : ' + lname + ' ' + fname)
 
-    print('\n Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
+    print('\n\t - Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
     
     return 'Inscription réussie'
 
