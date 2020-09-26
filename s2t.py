@@ -20,8 +20,20 @@ with sr.AudioFile(AUDIO_FILE) as source:
 
 # recognize speech using Sphinx
 try:
-    print(" - Sphinx thinks you said : " + r.recognize_sphinx(audio))
+    print("\n - Sphinx thinks you said : " + r.recognize_sphinx(audio))
 except sr.UnknownValueError:
-    print(" - Sphinx could not understand audio")
+    print("\n - Sphinx could not understand audio")
 except sr.RequestError as e:
-    print(" - Sphinx error; {0}".format(e))
+    print("\n - Sphinx error; {0}".format(e))
+
+# recognize keywords using Sphinx
+try:
+    print("\n - Sphinx recognition for \"one two three\" with different sets of keywords:")
+    print(r.recognize_sphinx(audio, keyword_entries=[("one", 1.0), ("two", 1.0), ("three", 1.0)]))
+except sr.UnknownValueError:
+    print("\n - Sphinx could not understand audio")
+except sr.RequestError as e:
+    print("\n - Sphinx error; {0}".format(e))
+
+
+

@@ -180,8 +180,8 @@ def upload_verify():
     # Waiting for voice thread execution to finish
     thread_voice.join()
 
-    # Always delete user data, for debugging purposes, remove this line for production & restore the one below
-    os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
+# Always delete user data, for debugging purposes, remove this line for production & restore the one below
+    #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         
     # Retrieving threshold values from config file
     threshold_face = float(hp.integration.face_threshold)
