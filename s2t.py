@@ -1,39 +1,47 @@
-
 import argparse
-import speech_recognition as sr
-from os import path
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_wav')
 args = parser.parse_args()
 
+def word_to_num(s):
+    numbers  = {'zero':'0',
+                'one':'1',
+                'two':'2',
+                'three':'3',
+                'four':'4',
+                'five':'5',
+                'six':'6',
+                'seven':'7',
+                'eight':'8',
+                'nine':'9'}
+    return numbers.get(s,"Not an integer")
 
-# obtain full path to wav file
-AUDIO_FILE = path.join(path.dirname(path.realpath(__file__)), args.input_wav)
-# AUDIO_FILE = path.join(path.dirname(path.realpath(__file__)), "french.aiff")
-# AUDIO_FILE = path.join(path.dirname(path.realpath(__file__)), "chinese.flac")
+def words_to_digits(words_list):
+    digits = ""
+    for word in words_list:
+        digits += word_to_num(word)
+    if "Not an integer" in digits:
+        return "One or more of the inputs is not an integer"
+    return digits
+    
 
-# use the audio file as the audio source
-r = sr.Recognizer()
-with sr.AudioFile(AUDIO_FILE) as source:
-    audio = r.record(source)  # read the entire audio file
+os.system("deepspeech" 
+        + " --model deepspeech_model.pbmm " 
+        + " --scorer deepspeech_model.scorer " 
+        + " --audio " + args.input_wav 
+        + "  > speech-to-text_result 2>&1")
 
-# recognize speech using Sphinx
-try:
-    print("\n - Sphinx thinks you said : " + r.recognize_sphinx(audio))
-except sr.UnknownValueError:
-    print("\n - Sphinx could not understand audio")
-except sr.RequestError as e:
-    print("\n - Sphinx error; {0}".format(e))
+with open("speech-to-text_result", 'rt') as f:
+    lines = f.readlines()
+os.system("rm speech-to-text_result")
 
-# recognize keywords using Sphinx
-try:
-    print("\n - Sphinx recognition for \"one two three\" with different sets of keywords:")
-    print(r.recognize_sphinx(audio, keyword_entries=[("one", 1.0), ("two", 1.0), ("three", 1.0)]))
-except sr.UnknownValueError:
-    print("\n - Sphinx could not understand audio")
-except sr.RequestError as e:
-    print("\n - Sphinx error; {0}".format(e))
+time = lines[-2].replace("Inference", "Speech text recognition")
+speech_full = lines[-1]
+door_number_words = speech_full.replace("\n", "").split(" ")[-4:]
 
-
+print("\n - Speech text recognition took : " + time)
+print("\n - Door number (words) : " + str(door_number_words))
+print("\n - Door number (digits) : " + words_to_digits(door_number_words))
 

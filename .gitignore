@@ -7,3 +7,5 @@ facial_result.data
 *.bak*
 *.pyc
 wav
+deepspeech_model.pbmm
+deepspeech_model.scorer

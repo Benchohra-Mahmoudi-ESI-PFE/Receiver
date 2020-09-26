@@ -100,7 +100,7 @@ def upload_verify():
         with open('./speaker_result.data', 'rb') as filehandle:
             global best_identified_speakers
             best_identified_speakers = pickle.load(filehandle)
-            os.system("rm ./speaker_result.data")
+        os.system("rm ./speaker_result.data")
 
         id = best_identified_speakers[0][0]
         score = best_identified_speakers[0][1]
@@ -146,7 +146,7 @@ def upload_verify():
         with open('./facial_result.data', 'rb') as filehandle:
             global best_identified_faces 
             best_identified_faces = pickle.load(filehandle)
-            os.system("rm ./facial_result.data")
+        os.system("rm ./facial_result.data")
         
         id = best_identified_faces[0][0]
         score = best_identified_faces[0][1]
