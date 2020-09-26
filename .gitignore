@@ -6,3 +6,4 @@ speaker_result.data
 facial_result.data
 *.bak*
 *.pyc
+wav
