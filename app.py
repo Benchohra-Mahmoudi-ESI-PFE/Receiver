@@ -8,7 +8,8 @@ import numpy
 import base64
 import time
 import pickle
-import subprocess
+import threading
+
 
 import sys
 sys.path.insert(1, '../config')
@@ -38,6 +39,8 @@ def about():
 ##################################################################################################################################
 ##################################################################################################################################
 
+best_identified_faces = []
+best_identified_speakers = []
 
 @app.route('/upload_verification', methods = ['POST'])
 def upload_verify():
@@ -50,7 +53,6 @@ def upload_verify():
     or not request.form['AUDIO'] \
     or not request.form['timestamp']:
         return 'Données non complètes'
-        
 
     # Decrpting data
     img_data_encoded = aes_cipher.decrypt(request.form['IMG'])
@@ -74,74 +76,98 @@ def upload_verify():
         f.write(audio_data)
 
 
+
     # -------------------------------------
-    print('\n    Verifying the voice...')
+    #          Voice Verification
     # -------------------------------------
 
-    start_rv = time.time()
-    err_code_rv = os.system("conda run -n voice_py3 python " 
-                                + hp.integration.speaker_verification_path + "verify_speaker.py" 
-                                + " --verify t " 
-                                + " --test_wav_file " + audio_file_path
-                                + " --best_identified_speakers ./")
-    print("\t Time to recognize voice : %f" % (time.time() - start_rv))
+    def verify_speaker():
 
-    if (err_code_rv == 0):
-        # Clean execution of voice extraction module
-        pass
+        print('\t Verifying the voice...')
+        # print("------------------------ in thread voice") # --------------------------------
+        start_rv = time.time()
+        err_code_rv = os.system("conda run -n voice_py3 python " 
+                                    + hp.integration.speaker_verification_path + "verify_speaker.py" 
+                                    + " --verify t " 
+                                    + " --test_wav_file " + audio_file_path
+                                    + " --best_identified_speakers ./")
+        end_rv = time.time() - start_rv
+
+        if (err_code_rv == 0):
+            # Clean execution of voice extraction module
+            pass
+
+        with open('./speaker_result.data', 'rb') as filehandle:
+            global best_identified_speakers
+            best_identified_speakers = pickle.load(filehandle)
+            os.system("rm ./speaker_result.data")
         
-    with open('./speaker_result.data', 'rb') as filehandle:
-        best_identified_speakers = pickle.load(filehandle)
-        os.system("rm ./speaker_result.data")
+        id = best_identified_speakers[0][0]
+        score = best_identified_speakers[0][1]
+        lname_voice = id.split('_')[2]
+        fname_voice = id.split('_')[3]
+        print('\n\t - Time to recognize voice : %f' % (end_rv) 
+            + '\n\t - Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
 
-    id = best_identified_speakers[0][0]
-    score = best_identified_speakers[0][1]
-    lname = id.split('_')[2]
-    fname = id.split('_')[3]
-    print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
-    
-    # restriction_list = [x[0] for x in best_identified_speakers]
-    # print(restriction_list)
+    thread_voice = threading.Thread(target=verify_speaker)
+    thread_voice.start()
 
 
     # -------------------------------------
-    print('\n     Verifying the face...')
+    #           Face Verification
     # -------------------------------------
 
-    start_rf1 = time.time()
-    err_code_rf1 = os.system("conda run -n pytorch_main python " 
-                                + hp.integration.face_verification_path + "extract_face.py" 
-                                + " --input_image " + img_file_path 
-                                + " --destination_dir " + hp.integration.verify_upload_folder)
-    print("\t Time to extract face : %f" % (time.time() - start_rf1))
+    def extract_face_and_identify():
 
-    
-    start_rf2 = time.time()
-    err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
-                                + hp.integration.face_verification_path + "identify_face.py" 
-                                + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
-                                + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
-                                + " --best_identified_faces ./")
-    print("\t Time to recognize face : %f" % (time.time() - start_rf2))
+        print('\t Verifying the face...')
 
-    if (err_code_rf1 + err_code_rf2 == 0):
-        # Clean execution of face extraction and face identification modules
-        pass
-    
-    with open('./facial_result.data', 'rb') as filehandle:
-        best_identified_faces = pickle.load(filehandle)
-        os.system("rm ./facial_result.data")
+        # Extracting face
+        start_rf1 = time.time()
+        err_code_rf1 = os.system("conda run -n pytorch_main python " 
+                                    + hp.integration.face_verification_path + "extract_face.py" 
+                                    + " --input_image " + img_file_path 
+                                    + " --destination_dir " + hp.integration.verify_upload_folder)
+        end_rf1 = time.time() - start_rf1
 
-    id = best_identified_faces[0][0]
-    score = best_identified_faces[0][1]
-    lname = id.split('_')[2]
-    fname = id.split('_')[3]
-    print('\n\t Identified as : %s %s - (precision : %d%%)' % (lname, fname, int(100*score)))
+        # Identifying face
+        start_rf2 = time.time()
+        err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
+                                    + hp.integration.face_verification_path + "identify_face.py" 
+                                    + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
+                                    + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
+                                    + " --best_identified_faces ./")
+        end_rf2 = time.time() - start_rf2
+
+        if (err_code_rf1 + err_code_rf2 == 0):
+            # Clean execution of face extraction and face identification modules
+            pass
+
+        with open('./facial_result.data', 'rb') as filehandle:
+            global best_identified_faces 
+            best_identified_faces = pickle.load(filehandle)
+            os.system("rm ./facial_result.data")
+        
+        id = best_identified_faces[0][0]
+        score = best_identified_faces[0][1]
+        lname_face = id.split('_')[2]
+        fname_face = id.split('_')[3]
+
+        print('\n\t - Time to recognize face (total) : %f' % (end_rf1 + end_rf2) 
+            + '\n\t\t # Face extraction : %f' % (end_rf1) 
+            + '\n\t\t # Face identification : %f' % (end_rf2) 
+            + '\n\t - Identified the face as : %s %s - (precision : %d%%)' % (lname_face, fname_face, int(100*score)))
+
+    thread_face = threading.Thread(target=extract_face_and_identify)
+    thread_face.start()
     
-    
+
     # -----------------------------------
     #              DECISION
     # -----------------------------------
+    
+    # Waiting for threads execution to finish
+    thread_voice.join()
+    thread_face.join()
 
     # Always delete user data, for debugging purposes, remove this line for production & restore the one below
     os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
@@ -154,31 +180,46 @@ def upload_verify():
     # Accessing recognition results from the modules
     top_face_id = best_identified_faces[0][0]
     top_voice_id = best_identified_speakers[0][0]
+
+    # Accessing best candidates & calculating the dynamic decision function
+    top_face_acc = best_identified_faces[0][1]
+    top_voice_acc = best_identified_speakers[0][1]
     
     # Retrieving the importance weights for face & voice
     weight_face = hp.integration.weight_face
     weight_voice = hp.integration.weight_voice
 
-     # Accessing best candidates & calculating the dynamic decision function
-    top_face_acc = best_identified_faces[0][1]
-    top_voice_acc = best_identified_speakers[0][1]
+    # Calculate the dynamic (general) accuracy using retrieved weights
     general_acc = round(weight_face*top_face_acc + weight_voice*top_voice_acc, 2)
 
 
     if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
                                      and (top_voice_acc >= threshold_voice) \
                                      and (general_acc >= threshold_general):
-
         # Delete user data since succeessfully identified
         #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
-        print('\n     Identity confirmed successfully, %s %s - (global precision : %d%%)' % (lname, fname, int(100*general_acc)))
+        lname_rec = top_face_id.split('_')[2]
+        fname_rec = top_face_id.split('_')[3]
+        print('\n     Identity confirmed successfully, %s %s - (global precision : %d%%)' % (lname_rec, fname_rec, int(100*general_acc)))
 
-    elif (top_face_acc < threshold_face) and (top_voice_id < threshold_voice):
+    elif (top_face_acc < threshold_face) and (top_voice_acc < threshold_voice):
         return_msg = 'Non reconnu'
         print('\n\t' + 'Not recognized')
 
-    else: # Includes (top_face_id != top_voice_id)
+    elif (top_face_acc < threshold_face):
+        return_msg = 'Visage non reconnu, réessayez'
+        print('\n\t Face accuracy < threshold, waiting for retry...')
+
+    elif (top_voice_acc < threshold_voice):
+        return_msg = 'Voix non reconnue, réessayez'
+        print('\n\t Voice accuracy < threshold, waiting for retry...')
+
+    elif (general_acc < threshold_general):
+        return_msg = 'Non reconnu, réessayez'
+        print('\n\t Dynamic function not satistied, waiting for retry...')
+
+    else: # (top_face_id != top_voice_id) even though both thresholds are satisfied
         return_msg = 'Partiellement reconnu, réessayez'
         print('\n\t Face and voice mismatch, waiting for retry...')
 
@@ -271,9 +312,9 @@ def upload_enroll():
     #     os.system("rm " + img_file_path + " " + input_face_image)
 
 
-    print('\n Successfully enrolled ' + lname + ' ' + fname)
+    print('\n\t - Successfully enrolled : ' + lname + ' ' + fname)
 
-    print('\n Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
+    print('\n\t - Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
     
     return 'Inscription réussie'
 
@@ -282,3 +323,4 @@ if __name__ == '__main__':
     #app.debug = True
     host, port = ("193.194.91.145", 5004)
     app.run(host=host, port= port, debug=True)
+
