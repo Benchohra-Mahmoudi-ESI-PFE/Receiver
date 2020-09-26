@@ -101,7 +101,7 @@ def upload_verify():
             global best_identified_speakers
             best_identified_speakers = pickle.load(filehandle)
             os.system("rm ./speaker_result.data")
-        
+
         id = best_identified_speakers[0][0]
         score = best_identified_speakers[0][1]
         lname_voice = id.split('_')[2]
@@ -128,6 +128,7 @@ def upload_verify():
                                     + " --input_image " + img_file_path 
                                     + " --destination_dir " + hp.integration.verify_upload_folder)
         end_rf1 = time.time() - start_rf1
+
 
         # Identifying face
         start_rf2 = time.time()
@@ -159,15 +160,25 @@ def upload_verify():
 
     thread_face = threading.Thread(target=extract_face_and_identify)
     thread_face.start()
-    
+   
 
     # -----------------------------------
     #              DECISION
     # -----------------------------------
     
-    # Waiting for threads execution to finish
-    thread_voice.join()
+    # Waiting for face thread execution to finish
     thread_face.join()
+    
+    # Checking if the face extraction returned any errors
+    f = open("face_detect_err_file", "rt")
+    err = f.read()
+    f.close()
+    os.system("rm face_detect_err_file")
+    if (len(err) != 0):
+        return "Visage non visible" if "face" in err else "Image introuvable"
+
+    # Waiting for voice thread execution to finish
+    thread_voice.join()
 
     # Always delete user data, for debugging purposes, remove this line for production & restore the one below
     os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
