@@ -6,3 +6,9 @@ speaker_result.data
 facial_result.data
 *.bak*
 *.pyc
+*.wav
+deepspeech_model.pbmm
+deepspeech_model.scorer
+*.out
+err_output_identify_face
+*.old
