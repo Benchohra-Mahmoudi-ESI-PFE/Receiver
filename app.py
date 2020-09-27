@@ -68,22 +68,17 @@ class employees(db.Model):
 
 class rooms(db.Model):
     __tablename__ = 'rooms'
-    id = db.Column(db.Integer, primary_key=True) #, default=db.session.query(func.public.generate_uid(5)).all())
-    num_block = db.Column(db.Integer)
-    num_floor = db.Column(db.Integer)
-    num_door = db.Column(db.Integer)
-    room_description = db.Column(db.String(200))
+    id = db.Column(db.Text, primary_key=True, autoincrement= False) # this is the door number (4 digits)
+    room_description = db.Column(db.String(200), default= '')
 
-    def __init__(self, num_block, num_floor, num_door, room_description):
-        self.num_block = num_block
-        self.num_floor = num_floor
-        self.num_door = num_door
+    def __init__(self, num_door, room_description):
+        self.id = num_door
         self.room_description = room_description
 
 class has_access(db.Model):
     __tablename__ = 'has_access'
     employee_id = db.Column(db.Text, db.ForeignKey(employees.id), primary_key=True)
-    room_id = db.Column(db.Integer, db.ForeignKey(rooms.id), primary_key=True)
+    room_id = db.Column(db.Text, db.ForeignKey(rooms.id), primary_key=True)
     date_has_access = db.Column(db.Date)
     time_has_access = db.Column(db.Time)
     description_has_access = db.Column(db.String(200))
@@ -123,8 +118,7 @@ class log_inscription(db.Model):
 class log_verification(db.Model):
     __tablename__ = 'log_verification'
     employee_id = db.Column(db.Text, db.ForeignKey(employees.id), primary_key=True)
-
-    room_id = db.Column(db.Integer, db.ForeignKey(rooms.id), primary_key=True)
+    room_id = db.Column(db.Text, db.ForeignKey(rooms.id), primary_key=True)
     date_verification = db.Column(db.Date, primary_key=True)
     time_verification = db.Column(db.Time, primary_key=True)
     verification_description = db.Column(db.String(200))
@@ -521,7 +515,7 @@ def upload_enroll():
                                 + hp.integration.face_verification_path + "save_face_embeddings.py"
                                 + " --input_image " + input_face_image
                                 + " --destination_dir " + hp.integration.enroll_preprocessed_photo)
-    print("\t - Time to get and save embeddings : %f" % (time.time() - start_rf1_1))
+    print("\t - Time to get and save face embeddings : %f" % (time.time() - start_rf1_1))
 
     # if (err_code_rf1 + err_code_rf2 == 0):
     #     os.system("rm " + img_file_path + " " + input_face_image)
