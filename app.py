@@ -86,7 +86,7 @@ def upload_verify():
 
         # Extracting face
         start_rf1 = time.time()
-        err_code_rf1 = os.system("conda run -n pytorch_main python " 
+        err_code_rf1 = os.system("conda run -n pytorch_main python -W ignore " 
                                     + hp.integration.face_verification_path + "extract_face.py" 
                                     + " --input_image " + img_file_path 
                                     + " --destination_dir " + hp.integration.verify_upload_folder)
@@ -95,11 +95,12 @@ def upload_verify():
 
         # Identifying face
         start_rf2 = time.time()
-        err_code_rf2 = os.system("conda run -n vgg_py3 python " 
+        err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
                                     + hp.integration.face_verification_path + "identify_face.py" 
                                     + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
                                     + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
-                                    + " --best_identified_faces ./ ")
+                                    + " --best_identified_faces ./ "
+                                    + " 2> err_output_identify_face")
         end_rf2 = time.time() - start_rf2
 
         if (err_code_rf1 + err_code_rf2 == 0):
@@ -136,7 +137,7 @@ def upload_verify():
         # print('\t Verifying the voice...')
 
         start_rv = time.time()
-        err_code_rv = os.system("conda run -n voice_py3 python " 
+        err_code_rv = os.system("conda run -n voice_py3 python -W ignore " 
                                     + hp.integration.speaker_verification_path + "verify_speaker.py" 
                                     + " --verify t " 
                                     + " --test_wav_file " + audio_file_path
