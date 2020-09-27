@@ -1,0 +1,12 @@
+ERROR conda.cli.main_run:execute(32): Subprocess for 'conda run [u'python', u'-W', u'ignore', u'../face_recognition/identify_face.py', u'--face_image', u'uploads_verification/20200927_170705_verify_photo_visage.jpg', u'--preprocessed_dir', u'enroll_preprocessed/photo/', u'--best_identified_faces', u'./']' command failed.  (See above for error)
+2020-09-27 17:07:10.725175: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-09-27 17:07:10.725220: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
+Traceback (most recent call last):
+  File "../face_recognition/identify_face.py", line 68, in <module>
+    embeddings_face = get_embeddings(args.face_image)
+  File "../face_recognition/identify_face.py", line 26, in get_embeddings
+    image = Image.fromarray(face)
+  File "/home/sahar/miniconda2/envs/vgg_py3/lib/python3.6/site-packages/PIL/Image.py", line 2739, in fromarray
+    arr = obj.__array_interface__
+AttributeError: 'NoneType' object has no attribute '__array_interface__'
+
