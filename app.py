@@ -39,6 +39,7 @@ def about():
 ##################################################################################################################################
 ##################################################################################################################################
 
+door_number_digits = ""
 best_identified_faces = []
 best_identified_speakers = []
 
@@ -47,7 +48,7 @@ def upload_verify():
 
     start_rec = time.time()
 
-    print('\n\n\n\n ########################### Incoming Verification ... ########################### \n')
+    print('\n\n\n\n ########################### Incoming Verification ... ########################### ')
 
     if not request.form['IMG'] \
     or not request.form['AUDIO'] \
@@ -78,13 +79,62 @@ def upload_verify():
 
 
     # -------------------------------------
+    #           Face Verification
+    # -------------------------------------
+
+    def extract_face_and_identify():
+
+        # Extracting face
+        start_rf1 = time.time()
+        err_code_rf1 = os.system("conda run -n pytorch_main python " 
+                                    + hp.integration.face_verification_path + "extract_face.py" 
+                                    + " --input_image " + img_file_path 
+                                    + " --destination_dir " + hp.integration.verify_upload_folder)
+        end_rf1 = time.time() - start_rf1
+
+
+        # Identifying face
+        start_rf2 = time.time()
+        err_code_rf2 = os.system("conda run -n vgg_py3 python " 
+                                    + hp.integration.face_verification_path + "identify_face.py" 
+                                    + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
+                                    + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
+                                    + " --best_identified_faces ./ ")
+        end_rf2 = time.time() - start_rf2
+
+        if (err_code_rf1 + err_code_rf2 == 0):
+            # Clean execution of face extraction and face identification modules
+            pass
+
+        with open('./facial_result.data', 'rb') as filehandle:
+            global best_identified_faces 
+            best_identified_faces = pickle.load(filehandle)
+        os.system("rm ./facial_result.data")
+        
+        id = best_identified_faces[0][0]
+        score = best_identified_faces[0][1]
+        lname_face = id.split('_')[2]
+        fname_face = id.split('_')[3]
+
+        print('\n\n    FACE RECOGNITION : '
+            + '\n\t - Time to recognize face (total) : %f' % (end_rf1 + end_rf2) 
+            + '\n\t    + Face extraction : %f' % (end_rf1) 
+            + '\n\t    + Face identification : %f' % (end_rf2) 
+            + '\n\t - Identified the face as : %s %s - (precision : %d%%)' % (lname_face, fname_face, int(100*score)))
+
+    thread_face = threading.Thread(target=extract_face_and_identify)
+    thread_face.start()
+
+
+
+    # -------------------------------------
     #          Voice Verification
     # -------------------------------------
 
     def verify_speaker():
 
-        print('\t Verifying the voice...')
-        # print("------------------------ in thread voice") # --------------------------------
+        # print('\t Verifying the voice...')
+
         start_rv = time.time()
         err_code_rv = os.system("conda run -n voice_py3 python " 
                                     + hp.integration.speaker_verification_path + "verify_speaker.py" 
@@ -106,61 +156,68 @@ def upload_verify():
         score = best_identified_speakers[0][1]
         lname_voice = id.split('_')[2]
         fname_voice = id.split('_')[3]
-        print('\n\t - Time to recognize voice : %f' % (end_rv) 
+        print('\n\n    VOICE RECOGNITION : '
+            + '\n\t - Time to recognize voice : %f' % (end_rv) 
             + '\n\t - Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
 
     thread_voice = threading.Thread(target=verify_speaker)
     thread_voice.start()
 
 
-    # -------------------------------------
-    #           Face Verification
-    # -------------------------------------
 
-    def extract_face_and_identify():
+    # ---------------------------------------
+    #          Door Number Extraction
+    # ---------------------------------------
 
-        print('\t Verifying the face...')
+    def extract_door_number():
 
-        # Extracting face
-        start_rf1 = time.time()
-        err_code_rf1 = os.system("conda run -n pytorch_main python " 
-                                    + hp.integration.face_verification_path + "extract_face.py" 
-                                    + " --input_image " + img_file_path 
-                                    + " --destination_dir " + hp.integration.verify_upload_folder)
-        end_rf1 = time.time() - start_rf1
+        def word_to_num(s):
+            numbers  = {'zero':'0', 'one':'1', 'two':'2', 'three':'3', 'four':'4', 
+                        'five':'5', 'six':'6', 'seven':'7', 'eight':'8', 'nine':'9'}
+            return numbers.get(s,"Not an integer")
+
+        def words_to_digits(words_list):
+            digits = ""
+            for word in words_list:
+                digits += word_to_num(word)
+            if "Not an integer" in digits:
+                return "One or more of the inputs is not an integer"
+            return digits
+
+        s2t_start = time.time()
+        # Converting the .m4a input audio file to .wav (it will be deleted later on)
+        os.system("ffmpeg -loglevel quiet -y -i " + audio_file_path + " audio_file.wav")
+        conversion_end = time.time() - s2t_start
+        os.system("deepspeech" 
+                + " --model deepspeech_model.pbmm " 
+                + " --scorer deepspeech_model.scorer " 
+                + " --audio  audio_file.wav "
+                + " > speech-to-text_result 2>&1")
+
+        with open("speech-to-text_result", 'rt') as f:
+            lines = f.readlines()
+
+        # Deleting temp files
+        os.system("rm speech-to-text_result")
+        os.system("rm audio_file.wav")
+
+        inference_time = lines[-2].replace("Inference took ", "").replace("\n", "")
+        speech_full = lines[-1]
+        door_number_words = speech_full.replace("\n", "").split(" ")[-4:]
+        global door_number_digits
+        door_number_digits = words_to_digits(door_number_words)
+
+        print("\n\n    DOOR NUMBER EXTRACTION : "
+            + "\n\t - Speech to text lasted : %f" % (time.time() - s2t_start)
+            + "\n\t    + DeepSpeech inference took : %s" % inference_time
+            + "\n\t    + Conversion (.m4a to .wav) took : %f" % conversion_end
+            + "\n\t - Door number (words) : %s" % str(door_number_words)
+            + "\n\t - Door number (digits) : %s" % door_number_digits)
+
+    thread_speech2text = threading.Thread(target=extract_door_number)
+    thread_speech2text.start()
 
 
-        # Identifying face
-        start_rf2 = time.time()
-        err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
-                                    + hp.integration.face_verification_path + "identify_face.py" 
-                                    + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
-                                    + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
-                                    + " --best_identified_faces ./")
-        end_rf2 = time.time() - start_rf2
-
-        if (err_code_rf1 + err_code_rf2 == 0):
-            # Clean execution of face extraction and face identification modules
-            pass
-
-        with open('./facial_result.data', 'rb') as filehandle:
-            global best_identified_faces 
-            best_identified_faces = pickle.load(filehandle)
-        os.system("rm ./facial_result.data")
-        
-        id = best_identified_faces[0][0]
-        score = best_identified_faces[0][1]
-        lname_face = id.split('_')[2]
-        fname_face = id.split('_')[3]
-
-        print('\n\t - Time to recognize face (total) : %f' % (end_rf1 + end_rf2) 
-            + '\n\t\t # Face extraction : %f' % (end_rf1) 
-            + '\n\t\t # Face identification : %f' % (end_rf2) 
-            + '\n\t - Identified the face as : %s %s - (precision : %d%%)' % (lname_face, fname_face, int(100*score)))
-
-    thread_face = threading.Thread(target=extract_face_and_identify)
-    thread_face.start()
-   
 
     # -----------------------------------
     #              DECISION
@@ -176,6 +233,9 @@ def upload_verify():
     os.system("rm face_detect_err_file")
     if (len(err) != 0):
         return "Visage non visible" if "face" in err else "Image introuvable"
+
+    # Waiting for speech-to-text thread execution to finish
+    thread_speech2text.join()
 
     # Waiting for voice thread execution to finish
     thread_voice.join()
@@ -204,46 +264,66 @@ def upload_verify():
     general_acc = round(weight_face*top_face_acc + weight_voice*top_voice_acc, 2)
 
 
+    print("\n\n\n ==> DECISION : ")
+
     if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
                                      and (top_voice_acc >= threshold_voice) \
                                      and (general_acc >= threshold_general):
-        # Delete user data since succeessfully identified
+
+        # Delete user data when succeessfully identified
         #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
-        return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4])
+        
+        # Check is the identified person has the access credentials
+        def has_access(id, door):
+            return (int(100*general_acc) % 2 == 0)   # dummy condition, just for variation
+
+        # Check if the speech-to-text module successfuly extracted the door number 
+        if ("integer" not in door_number_digits):
+
+            if (has_access(id, door_number_digits)):
+                # grant_access() # function to grant access (pings the hardware side of the system)
+                print('\n\t - Access granted (door %s)' % door_number_digits)
+                access_msg = ''
+            else:
+                print('\n\t - Access denied (door %s)' % door_number_digits)
+                access_msg = ' Accès refusé'
+        else:
+            access_msg = ' Numéro porte inaudible'
+
+        return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + access_msg
         lname_rec = top_face_id.split('_')[2]
         fname_rec = top_face_id.split('_')[3]
-        print('\n     Identity confirmed successfully, %s %s - (global precision : %d%%)' % (lname_rec, fname_rec, int(100*general_acc)))
+        print('\n\t # Identity confirmed successfully, %s %s - (global precision : %d%%)' % (lname_rec, fname_rec, int(100*general_acc)))
 
     elif (top_face_acc < threshold_face) and (top_voice_acc < threshold_voice):
         return_msg = 'Non reconnu'
-        print('\n\t' + 'Not recognized')
+        print('\n\t - Not recognized')
 
     elif (top_face_acc < threshold_face):
         return_msg = 'Visage non reconnu, réessayez'
-        print('\n\t Face accuracy < threshold, waiting for retry...')
+        print('\n\t - Face accuracy < threshold, waiting for retry...')
 
     elif (top_voice_acc < threshold_voice):
         return_msg = 'Voix non reconnue, réessayez'
-        print('\n\t Voice accuracy < threshold, waiting for retry...')
+        print('\n\t - Voice accuracy < threshold, waiting for retry...')
 
     elif (general_acc < threshold_general):
         return_msg = 'Non reconnu, réessayez'
-        print('\n\t Dynamic function not satistied, waiting for retry...')
+        print('\n\t - Dynamic function not satistied, waiting for retry...')
 
     else: # (top_face_id != top_voice_id) even though both thresholds are satisfied
         return_msg = 'Partiellement reconnu, réessayez'
-        print('\n\t Face and voice mismatch, waiting for retry...')
+        print('\n\t - Face and voice mismatch, waiting for retry...')
+
+    print("\n\t # Global recognition time : %f" % (time.time() - start_rec))
+
+    print("\n\n\n\n\n    Ordered list of speakers : \n")
+    print(*best_identified_speakers, sep='\n')
+    print("\n    Ordered list of faces : \n")
+    print(*best_identified_faces, sep='\n')
 
 
-    print("\n     Global recognition time : %f" % (time.time() - start_rec))
-
-    print("\n Ordered list of speakers :")
-    print(best_identified_speakers)
-    print("\n Ordered list of faces :")
-    print(best_identified_faces)
-
-
-    print('\n\n')
+    print('\n\n\n\n\n\n')
     return return_msg
 
 

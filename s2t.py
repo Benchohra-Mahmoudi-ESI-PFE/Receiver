@@ -48,10 +48,10 @@ inference_time = lines[-2].replace("Inference", "Speech text recognition").repla
 speech_full = lines[-1]
 door_number_words = speech_full.replace("\n", "").split(" ")[-4:]
 
-print("\n - Speech text recognition took : %s" % inference_time)
-print("\n - Door number (words) : %s" % str(door_number_words))
-print("\n - Door number (digits) : %s" % words_to_digits(door_number_words))
+print(" - Speech text recognition took : %s" % inference_time)
+print(" - Door number (words) : %s" % str(door_number_words))
+print(" - Door number (digits) : %s" % words_to_digits(door_number_words))
 
 
-print("\n\n\t - Total execution time : %s \n" % (time.time() - start))
+print("\n\t - Total execution time : %s \n" % (time.time() - start))
 
