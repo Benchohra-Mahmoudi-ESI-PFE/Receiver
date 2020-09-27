@@ -13,6 +13,8 @@ import subprocess
 
 import sys
 sys.path.insert(1, '../config')
+# insert at 1, 0 is the script path (or '' in REPL)
+
 from hparam import hparam as hp
 
 
@@ -29,6 +31,9 @@ aes_cipher = AESCipher(key)
 # Initiating the Flask app
 app = Flask(__name__)
 
+
+# Configuring the database connection
+
 if hp.app.ENV == 'dev':
     app.debug = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + \
@@ -42,7 +47,6 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-
 db = SQLAlchemy(app)
 ############################### Data Base tables ###############################
 
@@ -55,6 +59,7 @@ class employees(db.Model):
     employee_proffession = db.Column(db.String(50))
     employee_banned = db.Column(db.Date, default='') # '' <==> not banned | not empty value <==> banned
     employee_role = db.Column(db.String(200))
+
     
 
     def __init__(self, employee_id, first_name, last_name, phone, proffession, banned, role):
@@ -90,19 +95,20 @@ class has_access(db.Model):
 
     employee = db.relationship('employees', foreign_keys='has_access.employee_id')
     room = db.relationship('rooms', foreign_keys='has_access.room_id')
-    
+
     def __init__(self, employee_id, room_id, date_has_access, time_has_access):
         self.employee_id = employee_id
         self.room_id = room_id
         self.date_has_access = date_has_access
         self.time_has_access = time_has_access
-    
+
 class log_inscription(db.Model):
     __tablename__ = 'log_inscription'
     id = db.Column(db.Integer, primary_key=True) #, default=db.session.query(func.public.generate_uid(5)).all())
     facial_biometric = db.Column(db.Text, unique=True) # path to preprocessed face data
     vocal_biometric = db.Column(db.Text, unique=True) # path to preprocessed voice data
     employee_id = db.Column(db.Text, db.ForeignKey(employees.id))
+
     date_inscription = db.Column(db.Date)
     time_inscription = db.Column(db.Time)
     inscription_description = db.Column(db.String(200))
@@ -122,6 +128,7 @@ class log_inscription(db.Model):
 class log_verification(db.Model):
     __tablename__ = 'log_verification'
     employee_id = db.Column(db.Text, db.ForeignKey(employees.id), primary_key=True)
+
     room_id = db.Column(db.Integer, db.ForeignKey(rooms.id), primary_key=True)
     date_verification = db.Column(db.Date, primary_key=True)
     time_verification = db.Column(db.Time, primary_key=True)
