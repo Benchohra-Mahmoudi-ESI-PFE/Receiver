@@ -300,7 +300,7 @@ def upload_enroll():
                                 + hp.integration.speaker_verification_path + "verify_speaker.py" 
                                 + " --verify f " 
                                 + " --test_wav_file " + audio_file_path)
-    print("Time to extract voice embeddings : %f" % (time.time() - start_rv))
+    print("\t - Time to extract voice embeddings : %f" % (time.time() - start_rv))
 
     # Extracting & saving face 
     start_rf1 = time.time()
@@ -308,7 +308,7 @@ def upload_enroll():
                                 + hp.integration.face_verification_path + "extract_face.py" 
                                 + " --input_image " + img_file_path 
                                 + " --destination_dir " + hp.integration.enroll_upload_photo_folder)
-    print("Time to extract face : %f" % (time.time() - start_rf1))
+    print("\t - Time to extract face : %f" % (time.time() - start_rf1))
 
     # Extracting & saving facea embeddings 
     start_rf1_1 = time.time()
@@ -317,15 +317,15 @@ def upload_enroll():
                                 + hp.integration.face_verification_path + "save_face_embeddings.py"
                                 + " --input_image " + input_face_image
                                 + " --destination_dir " + hp.integration.enroll_preprocessed_photo)
-    print("Time to get and save embeddings : %f" % (time.time() - start_rf1_1))
+    print("\t - Time to get and save embeddings : %f" % (time.time() - start_rf1_1))
 
     # if (err_code_rf1 + err_code_rf2 == 0):
     #     os.system("rm " + img_file_path + " " + input_face_image)
 
 
-    print('\n\t - Successfully enrolled : ' + lname + ' ' + fname)
+    print('\n\t     # Successfully enrolled : ' + lname + ' ' + fname)
 
-    print('\n\t - Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
+    print('\n\t     # Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
     
     return 'Inscription réussie'
 
