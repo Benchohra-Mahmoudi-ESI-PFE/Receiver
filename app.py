@@ -8,7 +8,7 @@ import numpy
 import base64
 import time
 import pickle
-
+from datetime import datetime
 #from db_tables import employees
 import threading
 
@@ -53,7 +53,7 @@ class employees(db.Model):
     employee_phone = db.Column(db.String(12),  unique=True)
     employee_proffession = db.Column(db.String(50))
     employee_banned = db.Column(db.Date, default='') # '' <==> not banned | not empty value <==> banned
-    employee_role = db.Column(db.String(200))
+    employee_role = db.Column(db.String(200), default='user')
 
     
 
@@ -101,7 +101,7 @@ class log_inscription(db.Model):
 
     date_inscription = db.Column(db.Date)
     time_inscription = db.Column(db.Time)
-    inscription_description = db.Column(db.String(200))
+    inscription_description = db.Column(db.String(200), default='')
 
     employee = db.relationship('employees', foreign_keys='log_inscription.employee_id')
 
@@ -121,7 +121,7 @@ class log_verification(db.Model):
     room_id = db.Column(db.Text, db.ForeignKey(rooms.id), primary_key=True)
     date_verification = db.Column(db.Date, primary_key=True)
     time_verification = db.Column(db.Time, primary_key=True)
-    verification_description = db.Column(db.String(200))
+    verification_description = db.Column(db.String(200), default='')
 
     employee = db.relationship('employees', foreign_keys='log_verification.employee_id')
     room = db.relationship('rooms', foreign_keys='log_verification.room_id')
@@ -137,9 +137,69 @@ class log_verification(db.Model):
 
 ################################################################################
 # To recreate an empty database uncomment the following three lines
-#db.drop_all()
-#db.create_all()
-#db.session.commit()
+def create_empty_db():
+    db.drop_all()
+    db.create_all()
+    db.session.commit()
+
+# create and insert new user
+def insert_new_user(id_employee, first_name, last_name, phone, proffession):
+    employee = employees(id_employee, first_name, last_name, '', '')
+    db.session.add(employee)
+    db.session.commit()
+
+def ban_user(employee_id):
+    employee = employees.query.filter_by(id == employee_id).first()
+    employee.employee_banned = datetime.now.strftime("%Y-%m-%d %H:%M:%S")
+    db.session.commit()
+
+
+def unban_user(employee_id):
+    employee = employees.query.filter_by(id == employee_id).first()
+    employee.employee_banned = ''
+    db.session.commit()
+
+
+# create and insert new room
+def insert_room(room_id):
+    room = rooms(room_id)
+    db.session.add(room)
+    db.session.commit()
+
+# add new permission to user (to a given room)
+def add_access_permission_user(id_employee, id_room):
+    access_permission = has_access(id_employee, id_room, datetime.today().strftime('%Y-%m-%d'),
+                                    datetime.now().strftime('%H:%M:%S'))
+    db.session.add(access_permission)
+    db.session.commit()
+
+# verify if a given user have access to a building
+def check_user_has_access(id_employee, room_number):
+    access = db.session.query(has_access).filter(has_access.employee_id == id_employee, 
+                    has_access.room_id == room_number).count()
+    return False if access == 0 else True
+
+# remove permission of user to a room
+def remove_permession_user(id_employee, room_number):
+    has_access.query.filter_by(employee_id == id_employee, room_id == room_number).delete()
+    db.session.commit()
+
+# inserting enrollment log
+def insert_enrollment_log(face_path, voice_path, employee_id, 
+                        inscription_date, inscription_time):
+    log_inscription = log_inscription(face_path, voice_path, employee_id, inscription_date, inscription_time)
+    db.session.add(log_inscription)
+    db.session.commit()
+
+# inserting verification log
+def insert_verification_log(employee_id, room_id, verification_date, verification_time):
+    log_verification = log_verification(employee_id, room_id, verification_date, verification_time)
+    db.session.add()
+    db.session.commit()
+
+
+################################################################################
+
 
 @app.route('/', methods = ['GET'])
 def home():
