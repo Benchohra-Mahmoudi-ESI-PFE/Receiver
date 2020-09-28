@@ -137,15 +137,17 @@ def upload_verify():
         # print('\t Verifying the voice...')
 
         start_rv = time.time()
+        # print(" --- before os.system --- ")
         err_code_rv = os.system("conda run -n voice_py3 python -W ignore " 
                                     + hp.integration.speaker_verification_path + "verify_speaker.py" 
                                     + " --verify t " 
                                     + " --test_wav_file " + audio_file_path
                                     + " --best_identified_speakers ./")
         end_rv = time.time() - start_rv
+        # print(" --- after os.system --- ")
 
-        if (err_code_rv == 0):
-            # Clean execution of voice extraction module
+        if (err_code_rv != 0):
+            print("err : something occured during os.system(speaker_verify.py)")
             pass
 
         with open('./speaker_result.data', 'rb') as filehandle:

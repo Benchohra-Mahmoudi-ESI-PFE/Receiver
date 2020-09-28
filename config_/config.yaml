@@ -1,0 +1,73 @@
+#----------------------------------
+# Speaker Recognition
+#----------------------------------
+training: !!bool "true"
+device: "cuda"
+unprocessed_data: './vox1/*/*/*'
+---
+data:
+    train_path: './train_tisv'
+    #train_path_unprocessed: './vox1/train/*/*/*.m4a'
+    test_path: './test_tisv'
+    #test_path_unprocessed: './vox2/test/*/*/*.m4a'
+    data_preprocessed: !!bool "true"
+    sr: 16000
+    nfft: 512 #For mel spectrogram preprocess
+    window: 0.025 #(s)
+    hop: 0.01 #(s)
+    nmels: 40 #Number of mel energies
+    tisv_frame: 180 #Max number of time steps in input after preprocess
+---
+model:
+    hidden: 768 #Number of LSTM hidden layer units
+    num_layer: 3 #Number of LSTM layers
+    proj: 256 #Embedding size
+    model_path: 'model.model' #Model path for testing, inference, or resuming training
+---
+train:
+    N : 4 #Number of speakers in batch
+    M : 5 #Number of utterances per speaker
+    num_workers: 0 #number of workers for dataloader
+    lr: 0.01
+    epochs: 100 #Max training speaker epoch
+    log_interval: 30 #Iterations before printing progress
+    log_file: './speech_id_checkpoint/Stats'
+    checkpoint_interval: 20 #Save model after x speaker epochs
+    checkpoint_dir: './speech_id_checkpoint'
+    restore: !!bool "false" #Resume training from previous model path
+---
+test:
+    N : 2 #Number of speakers in batch
+    M : 6 #Number of utterances per speaker
+    num_workers: 8 #number of workers for data laoder
+    epochs: 10 #testing speaker epochs
+
+
+#----------------------------------
+# Receiver App (Web)
+#----------------------------------
+integration:
+    #receiver_app: '/home/sahar/Documents/Mahmoudi_Benchohra_Project/receiver/'
+
+    verify_upload_folder: 'uploads_verification/'
+
+    speaker_verification_path: '../speaker_recognition/' #path to the speaker verification model
+    enroll_upload_audio_folder: 'uploads_enrollment/audio/'
+    enroll_preprocessed_audio: 'enroll_preprocessed/audio/'
+    restriction_cutoff: 2 # Number of top candidates to consider when restricting from one recognition module to the other
+    voice_threshold: 0.7
+    weight_voice: 0.5 # Importance of this modality, lower means less. 
+
+    face_verification_path: '../face_recognition/'
+    enroll_upload_photo_folder: 'uploads_enrollment/photo/'
+    enroll_preprocessed_photo: 'enroll_preprocessed/photo/'
+    face_threshold: 0.5
+    weight_face: 0.5 # Importance of this modality, lower means less. 
+
+
+app:
+    ENV: 'dev'
+    dev_db_username: 'postgres' # this is the role username
+    dev_db_password: 'pfe123' # this is the role password
+    dev_db_host: 'localhost'
+    dev_db_name: 'acs_db'
