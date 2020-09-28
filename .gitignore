@@ -5,6 +5,9 @@ uploads_verification*
 enroll_preprocessed*
 speaker_result.data
 facial_result.data
+config/
+sh
+*requirement*
 *.bak*
 *.pyc
 *.wav
