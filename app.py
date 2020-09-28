@@ -52,7 +52,7 @@ class employees(db.Model):
     employee_last_name = db.Column(db.String(50))
     employee_phone = db.Column(db.String(12),  unique=True)
     employee_proffession = db.Column(db.String(50))
-    employee_banned = db.Column(db.Date, default='') # '' <==> not banned | not empty value <==> banned
+    employee_banned = db.Column(db.Text, default='') # '' <==> not banned | not empty value <==> banned
     employee_role = db.Column(db.String(200), default='user')
 
     
@@ -71,7 +71,7 @@ class rooms(db.Model):
     id = db.Column(db.Text, primary_key=True, autoincrement= False) # this is the door number (4 digits)
     room_description = db.Column(db.String(200), default= '')
 
-    def __init__(self, num_door, room_description):
+    def __init__(self, num_door, room_description=''):
         self.id = num_door
         self.room_description = room_description
 
@@ -106,7 +106,7 @@ class log_inscription(db.Model):
     employee = db.relationship('employees', foreign_keys='log_inscription.employee_id')
 
     def __init__(self, facial_biometric, vocal_biometric, employee_id, 
-                date_inscription, time_inscription, inscription_description):
+                date_inscription, time_inscription, inscription_description=''):
         self.facial_biometric = facial_biometric
         self.vocal_biometric = vocal_biometric
         self.employee_id = employee_id
@@ -127,7 +127,7 @@ class log_verification(db.Model):
     room = db.relationship('rooms', foreign_keys='log_verification.room_id')
 
     def __init__(self, employee_id, room_id, date_verification, 
-                    time_verification, verification_description):
+                    time_verification, verification_description=''):
         self.employee_id = employee_id
         self.room_id = room_id
         self.date_verification = date_verification
@@ -136,15 +136,15 @@ class log_verification(db.Model):
 
 
 ################################################################################
-# To recreate an empty database uncomment the following three lines
+# To recreate an empty database call this function and it will do the job
 def create_empty_db():
     db.drop_all()
     db.create_all()
     db.session.commit()
 
 # create and insert new user
-def insert_new_user(id_employee, first_name, last_name, phone, proffession):
-    employee = employees(id_employee, first_name, last_name, '', '')
+def insert_new_user(id_employee, first_name, last_name, phone='', proffession='', banned='', role='user'):
+    employee = employees(id_employee, first_name, last_name, phone, proffession, banned, role)
     db.session.add(employee)
     db.session.commit()
 
@@ -581,8 +581,11 @@ def upload_enroll():
     #     os.system("rm " + img_file_path + " " + input_face_image)
     # audio_file_path = 'uploads_enrollment/audio/' + os.path.splitext(aes_cipher.decrypt(request.form['audio-file-name']))[0] + '.npy'
     # img_file_path = 'uploads_enrollment/photo/'+ os.path.splitext(aes_cipher.decrypt(request.form['photo-file-name']))[0] + '_visage.jpg'
-
-
+    
+    
+    # insert new user into database
+    insert_new_user(id_employee=user_id, first_name=fname, last_name= lname)
+    
     print('\n\t     # Successfully enrolled : ' + lname + ' ' + fname)
 
     print('\n\t     # Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
@@ -594,4 +597,6 @@ if __name__ == '__main__':
     #app.debug = True
     host, port = ("193.194.91.145", 5004)
     app.run(host=host, port= port, debug=True)
+    """ create_empty_db()
+    print('\n\tEmpty Data base created...') """
 
