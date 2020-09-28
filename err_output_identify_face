@@ -1,12 +1,24 @@
-ERROR conda.cli.main_run:execute(32): Subprocess for 'conda run [u'python', u'-W', u'ignore', u'../face_recognition/identify_face.py', u'--face_image', u'uploads_verification/20200927_170705_verify_photo_visage.jpg', u'--preprocessed_dir', u'enroll_preprocessed/photo/', u'--best_identified_faces', u'./']' command failed.  (See above for error)
-2020-09-27 17:07:10.725175: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
-2020-09-27 17:07:10.725220: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
-Traceback (most recent call last):
-  File "../face_recognition/identify_face.py", line 68, in <module>
-    embeddings_face = get_embeddings(args.face_image)
-  File "../face_recognition/identify_face.py", line 26, in get_embeddings
-    image = Image.fromarray(face)
-  File "/home/sahar/miniconda2/envs/vgg_py3/lib/python3.6/site-packages/PIL/Image.py", line 2739, in fromarray
-    arr = obj.__array_interface__
-AttributeError: 'NoneType' object has no attribute '__array_interface__'
+2020-09-28 21:05:38.848923: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-09-28 21:05:38.848962: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
+2020-09-28 21:05:39.816718: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcuda.so.1
+2020-09-28 21:05:39.843647: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:982] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-09-28 21:05:39.843868: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1716] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce GT 710 computeCapability: 3.5
+coreClock: 0.954GHz coreCount: 1 deviceMemorySize: 1.95GiB deviceMemoryBandwidth: 13.41GiB/s
+2020-09-28 21:05:39.843939: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcudart.so.10.1'; dlerror: libcudart.so.10.1: cannot open shared object file: No such file or directory
+2020-09-28 21:05:39.843986: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcublas.so.10'; dlerror: libcublas.so.10: cannot open shared object file: No such file or directory
+2020-09-28 21:05:39.844029: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcufft.so.10'; dlerror: libcufft.so.10: cannot open shared object file: No such file or directory
+2020-09-28 21:05:39.844072: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcurand.so.10'; dlerror: libcurand.so.10: cannot open shared object file: No such file or directory
+2020-09-28 21:05:39.844115: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcusolver.so.10'; dlerror: libcusolver.so.10: cannot open shared object file: No such file or directory
+2020-09-28 21:05:39.844157: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcusparse.so.10'; dlerror: libcusparse.so.10: cannot open shared object file: No such file or directory
+2020-09-28 21:05:39.844199: W tensorflow/stream_executor/platform/default/dso_loader.cc:59] Could not load dynamic library 'libcudnn.so.7'; dlerror: libcudnn.so.7: cannot open shared object file: No such file or directory
+2020-09-28 21:05:39.844207: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1753] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2020-09-28 21:05:39.844407: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN)to use the following CPU instructions in performance-critical operations:  AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2020-09-28 21:05:39.849219: I tensorflow/core/platform/profile_utils/cpu_utils.cc:104] CPU Frequency: 3600000000 Hz
+2020-09-28 21:05:39.849588: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x5559bff2b300 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2020-09-28 21:05:39.849599: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2020-09-28 21:05:39.850583: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1257] Device interconnect StreamExecutor with strength 1 edge matrix:
+2020-09-28 21:05:39.850593: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1263]      
 
