@@ -50,7 +50,7 @@ class employees(db.Model):
     id = db.Column(db.Text, primary_key=True, autoincrement=False) #, default=db.session.query(func.public.generate_uid(5)).all())
     employee_first_name = db.Column(db.String(50))
     employee_last_name = db.Column(db.String(50))
-    employee_phone = db.Column(db.String(12),  unique=True)
+    employee_phone = db.Column(db.String(12)) #,  unique=True) should be unique later
     employee_proffession = db.Column(db.String(50))
     employee_banned = db.Column(db.Text, default='') # '' <==> not banned | not empty value <==> banned
     employee_role = db.Column(db.String(200), default='user')
@@ -142,6 +142,8 @@ def create_empty_db():
     db.create_all()
     db.session.commit()
 
+#create_empty_db()
+
 # create and insert new user
 def insert_new_user(id_employee, first_name, last_name, phone='', proffession='', banned='', role='user'):
     employee = employees(id_employee, first_name, last_name, phone, proffession, banned, role)
@@ -187,8 +189,8 @@ def remove_permession_user(id_employee, room_number):
 # inserting enrollment log
 def insert_enrollment_log(face_path, voice_path, employee_id, 
                         inscription_date, inscription_time):
-    log_inscription = log_inscription(face_path, voice_path, employee_id, inscription_date, inscription_time)
-    db.session.add(log_inscription)
+    log_inscription_item = log_inscription(face_path, voice_path, employee_id, inscription_date, inscription_time)
+    db.session.add(log_inscription_item)
     db.session.commit()
 
 # inserting verification log
@@ -451,7 +453,7 @@ def upload_verify():
         # Delete user data when succeessfully identified
         #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         
-        # Check is the identified person has the access credentials
+        # Check if the identified person has the access credentials
         def has_access(id, door):
             return (int(100*general_acc) % 2 == 0)   # dummy condition, just for variation
 
@@ -583,8 +585,21 @@ def upload_enroll():
     # img_file_path = 'uploads_enrollment/photo/'+ os.path.splitext(aes_cipher.decrypt(request.form['photo-file-name']))[0] + '_visage.jpg'
     
     
-    # insert new user into database
+    # insert the new user into database
     insert_new_user(id_employee=user_id, first_name=fname, last_name= lname)
+
+    # insert the enrollment log in database
+    face_npy_path = hp.integration.enroll_preprocessed_photo + user_id + '_enroll_photo_visage.npy'
+    voice_npy_path = hp.integration.enroll_preprocessed_audio + user_id + '_audio.npy'
+    
+    enrollment_date = user_id.split('_')[0]
+    enrollment_date = enrollment_date[:4] + '-'+ enrollment_date[4:6] + '-' + enrollment_date[6:]
+    
+    enrollment_time = user_id.split('_')[1]
+    enrollment_time = enrollment_time[:2] + ':' + enrollment_time[2:4] + ':' + enrollment_time[4:]
+
+    # inserting the enrollment log
+    insert_enrollment_log(face_npy_path, voice_npy_path, user_id, enrollment_date, enrollment_time)
     
     print('\n\t     # Successfully enrolled : ' + lname + ' ' + fname)
 
@@ -597,6 +612,5 @@ if __name__ == '__main__':
     #app.debug = True
     host, port = ("193.194.91.145", 5004)
     app.run(host=host, port= port, debug=True)
-    """ create_empty_db()
-    print('\n\tEmpty Data base created...') """
+    
 
