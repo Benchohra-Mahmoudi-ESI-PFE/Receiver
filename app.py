@@ -91,26 +91,40 @@ def upload_verify():
                                     + " --input_image " + img_file_path 
                                     + " --destination_dir " + hp.integration.verify_upload_folder)
         end_rf1 = time.time() - start_rf1
-
+        if (err_code_rf1 == 0):
+            # print("err : something occured during os.system(extract_face.py)")
+            pass
 
         # Identifying face
         start_rf2 = time.time()
-        err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
-                                    + hp.integration.face_verification_path + "identify_face.py" 
-                                    + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
-                                    + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
-                                    + " --best_identified_faces ./ "
-                                    + " 2> err_output_identify_face")
+        if (os.path.isfile(img_file_path.replace(".jpg", "_visage.jpg"))):
+            err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
+                                        + hp.integration.face_verification_path + "identify_face.py" 
+                                        + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
+                                        + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
+                                        + " --best_identified_faces ./ "
+                                        + " 2> err_output_identify_face")
+            if (err_code_rf2 == 0):
+                # print("err : something occured during os.system(identify_face.py)")
+                pass
         end_rf2 = time.time() - start_rf2
 
-        if (err_code_rf1 + err_code_rf2 == 0):
-            # Clean execution of face extraction and face identification modules
-            pass
+        # Checking if the face extraction returned any errors
+        if(os.path.isfile("face_detect_err_file")):
+            f = open("face_detect_err_file", "rt")
+            err = f.read()
+            f.close()
+            if (len(err) != 0):
+                return
 
-        with open('./facial_result.data', 'rb') as filehandle:
-            global best_identified_faces 
-            best_identified_faces = pickle.load(filehandle)
-        os.system("rm ./facial_result.data")
+        # Open the generated file, exit if no file was generated
+        if (os.path.isfile('./facial_result.data')):
+            with open('./facial_result.data', 'rb') as filehandle:
+                global best_identified_faces 
+                best_identified_faces = pickle.load(filehandle)
+            os.system("rm ./facial_result.data")
+        else:
+            return
         
         id = best_identified_faces[0][0]
         score = best_identified_faces[0][1]
@@ -147,13 +161,17 @@ def upload_verify():
         # print(" --- after os.system --- ")
 
         if (err_code_rv != 0):
-            print("err : something occured during os.system(speaker_verify.py)")
+            # print("err : something occured during os.system(speaker_verify.py)")
             pass
 
-        with open('./speaker_result.data', 'rb') as filehandle:
-            global best_identified_speakers
-            best_identified_speakers = pickle.load(filehandle)
-        os.system("rm ./speaker_result.data")
+        # Open the generated file, exit if no file was generated
+        if (os.path.isfile("./speaker_result.data")):
+            with open('./speaker_result.data', 'rb') as filehandle:
+                global best_identified_speakers
+                best_identified_speakers = pickle.load(filehandle)
+            os.system("rm ./speaker_result.data")
+        else:
+            return
 
         id = best_identified_speakers[0][0]
         score = best_identified_speakers[0][1]
@@ -189,20 +207,35 @@ def upload_verify():
 
         s2t_start = time.time()
         # Converting the .m4a input audio file to .wav (it will be deleted later on)
-        os.system("ffmpeg -loglevel quiet -y -i " + audio_file_path + " audio_file.wav")
+        err_code_ff = os.system("ffmpeg -loglevel quiet -y -i " + audio_file_path + " audio_file.wav")
+        if (err_code_ff != 0):
+            # print("err : something occured during os.system(ffmpeg)")
+            pass
         conversion_end = time.time() - s2t_start
-        os.system("deepspeech" 
-                + " --model deepspeech_model.pbmm " 
-                + " --scorer deepspeech_model.scorer " 
-                + " --audio  audio_file.wav "
-                + " > speech-to-text_result 2>&1")
+        
+        if (os.path.isfile("audio_file.wav")):
+            err_code_st = os.system("deepspeech" 
+                    + " --model deepspeech_model.pbmm " 
+                    + " --scorer deepspeech_model.scorer " 
+                    + " --audio  audio_file.wav "
+                    + " > speech-to-text_result 2>&1")
+            # Deleting temp wav file
+            os.system("rm audio_file.wav")
+            if (err_code_st != 0):
+                # print("err : something occured during os.system(deepspeech)")
+                pass
 
-        with open("speech-to-text_result", 'rt') as f:
-            lines = f.readlines()
 
-        # Deleting temp files
+        # Open the generated file, exit if no file was generated
+        if (os.path.isfile("speech-to-text_result")):
+            with open("speech-to-text_result", 'rt') as f:
+                lines = f.readlines()
+        else:
+            return
+
+        # Deleting temp result file
         os.system("rm speech-to-text_result")
-        os.system("rm audio_file.wav")
+        
 
         inference_time = lines[-2].replace("Inference took ", "").replace("\n", "")
         speech_full = lines[-1]
@@ -225,23 +258,27 @@ def upload_verify():
     # -----------------------------------
     #              DECISION
     # -----------------------------------
-    
-    # Waiting for face thread execution to finish
-    thread_face.join()
-    
-    # Checking if the face extraction returned any errors
-    f = open("face_detect_err_file", "rt")
-    err = f.read()
-    f.close()
-    os.system("rm face_detect_err_file")
-    if (len(err) != 0):
-        return "Visage non visible" if "face" in err else "Image introuvable"
+
 
     # Waiting for speech-to-text thread execution to finish
     thread_speech2text.join()
 
     # Waiting for voice thread execution to finish
     thread_voice.join()
+    
+    # Waiting for face thread execution to finish
+    thread_face.join()
+
+    # Checking if the face extraction returned any errors
+    if(os.path.isfile("face_detect_err_file")):
+        f = open("face_detect_err_file", "rt")
+        err = f.read()
+        f.close()
+        os.system("rm face_detect_err_file")
+        if (len(err) != 0):
+            print('\n\n    FACE RECOGNITION : \n\t - ' + err + '\n\n')
+            return "Visage non visible" if "face" in err else "Image introuvable"
+
 
 # Always delete user data, for debugging purposes, remove this line for production & restore the one below
     #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
@@ -320,10 +357,10 @@ def upload_verify():
 
     print("\n\t # Global recognition time : %f" % (time.time() - start_rec))
 
-    print("\n\n\n\n\n    Ordered list of speakers : \n")
-    print(*best_identified_speakers, sep='\n')
-    print("\n    Ordered list of faces : \n")
-    print(*best_identified_faces, sep='\n')
+    # print("\n\n\n\n\n    Ordered list of speakers : \n")
+    # print(*best_identified_speakers, sep='\n')
+    # print("\n    Ordered list of faces : \n")
+    # print(*best_identified_faces, sep='\n')
 
 
     print('\n\n\n\n\n\n')
