@@ -11,4 +11,5 @@ deepspeech_model.pbmm
 deepspeech_model.scorer
 *.out
 err_output_identify_face
+err_output_identify_face/
 *.old
