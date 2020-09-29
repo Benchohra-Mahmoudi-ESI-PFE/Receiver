@@ -152,7 +152,7 @@ def create_empty_db():
     db.create_all()
     db.session.commit()
 
-create_empty_db()
+#create_empty_db()
 
 # create and insert new user
 def insert_new_user(id_employee, first_name, last_name, 
@@ -183,10 +183,10 @@ def insert_room(room_id):
     db.session.add(room)
     db.session.commit()
 # insert some rooms
-insert_room('1234')
+'''insert_room('1234')
 insert_room('2345')
 insert_room('3456')
-insert_room('4567')
+insert_room('4567')'''
 
 
 # add new permission to user (to a given room)
