@@ -85,16 +85,16 @@ class rooms(db.Model):
         self.id = num_door
         self.room_description = room_description
 
-class has_access(db.Model):
-    __tablename__ = 'has_access'
+class has_access_table(db.Model):
+    __tablename__ = 'has_access_table'
     employee_id = db.Column(db.Text, db.ForeignKey(employees.id), primary_key=True)
     room_id = db.Column(db.Text, db.ForeignKey(rooms.id), primary_key=True)
     date_has_access = db.Column(db.Date)
     time_has_access = db.Column(db.Time)
     description_has_access = db.Column(db.String(200))
 
-    employee = db.relationship('employees', foreign_keys='has_access.employee_id')
-    room = db.relationship('rooms', foreign_keys='has_access.room_id')
+    employee = db.relationship('employees', foreign_keys='has_access_table.employee_id')
+    room = db.relationship('rooms', foreign_keys='has_access_table.room_id')
 
     def __init__(self, employee_id, room_id, date_has_access, time_has_access):
         self.employee_id = employee_id
@@ -127,14 +127,14 @@ class has_access(db.Model):
 
 class log_verification(db.Model):
     __tablename__ = 'log_verification'
-    employee_id = db.Column(db.Text, db.ForeignKey(employees.id)) #, primary_key=True)
-    room_id = db.Column(db.Text, db.ForeignKey(rooms.id))#, primary_key=True)
+    employee_id = db.Column(db.Text)#, db.ForeignKey(employees.id)) #, primary_key=True)
+    room_id = db.Column(db.Text) #, db.ForeignKey(rooms.id))#, primary_key=True)
     date_verification = db.Column(db.Date, primary_key=True)
     time_verification = db.Column(db.Time, primary_key=True)
     verification_description = db.Column(db.String(200), default='')
 
-    employee = db.relationship('employees', foreign_keys='log_verification.employee_id')
-    room = db.relationship('rooms', foreign_keys='log_verification.room_id')
+    #employee = db.relationship('employees', foreign_keys='log_verification.employee_id')
+    #room = db.relationship('rooms', foreign_keys='log_verification.room_id')
 
     def __init__(self, employee_id, room_id, date_verification, 
                     time_verification, verification_description=''):
@@ -191,20 +191,20 @@ insert_room('4567')
 
 # add new permission to user (to a given room)
 def add_access_permission_user(id_employee, id_room):
-    access_permission = has_access(id_employee, id_room, datetime.today().strftime('%Y-%m-%d'),
+    access_permission = has_access_table(id_employee, id_room, datetime.today().strftime('%Y-%m-%d'),
                                     datetime.now().strftime('%H:%M:%S'))
     db.session.add(access_permission)
     db.session.commit()
 
 # verify if a given user have access to a building
 def has_access(id_employee, room_number):
-    access = db.session.query(has_access).filter(has_access.employee_id == id_employee, 
-                    has_access.room_id == room_number).count()
+    access = db.session.query(has_access_table).filter(has_access_table.employee_id == id_employee, 
+                    has_access_table.room_id == room_number).count()
     return False if access == 0 else True
 
 # remove permission of user to a room
 def remove_permession_user(id_employee, room_number):
-    has_access.query.filter_by(employee_id == id_employee, room_id == room_number).delete()
+    has_access_table.query.filter_by(employee_id == id_employee, room_id == room_number).delete()
     db.session.commit()
 
 # inserting enrollment log
@@ -291,26 +291,40 @@ def upload_verify():
                                     + " --input_image " + img_file_path 
                                     + " --destination_dir " + hp.integration.verify_upload_folder)
         end_rf1 = time.time() - start_rf1
-
+        if (err_code_rf1 == 0):
+            # print("err : something occured during os.system(extract_face.py)")
+            pass
 
         # Identifying face
         start_rf2 = time.time()
-        err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
-                                    + hp.integration.face_verification_path + "identify_face.py" 
-                                    + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
-                                    + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
-                                    + " --best_identified_faces ./ "
-                                    + " 2> err_output_identify_face")
+        if (os.path.isfile(img_file_path.replace(".jpg", "_visage.jpg"))):
+            err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
+                                        + hp.integration.face_verification_path + "identify_face.py" 
+                                        + " --face_image " + img_file_path.replace(".jpg", "_visage.jpg") 
+                                        + " --preprocessed_dir " + hp.integration.enroll_preprocessed_photo 
+                                        + " --best_identified_faces ./ "
+                                        + " 2> err_output_identify_face")
+            if (err_code_rf2 == 0):
+                # print("err : something occured during os.system(identify_face.py)")
+                pass
         end_rf2 = time.time() - start_rf2
 
-        if (err_code_rf1 + err_code_rf2 == 0):
-            # Clean execution of face extraction and face identification modules
-            pass
+        # Checking if the face extraction returned any errors
+        if(os.path.isfile("face_detect_err_file")):
+            f = open("face_detect_err_file", "rt")
+            err = f.read()
+            f.close()
+            if (len(err) != 0):
+                return
 
-        with open('./facial_result.data', 'rb') as filehandle:
-            global best_identified_faces 
-            best_identified_faces = pickle.load(filehandle)
-        os.system("rm ./facial_result.data")
+        # Open the generated file, exit if no file was generated
+        if (os.path.isfile('./facial_result.data')):
+            with open('./facial_result.data', 'rb') as filehandle:
+                global best_identified_faces 
+                best_identified_faces = pickle.load(filehandle)
+            os.system("rm ./facial_result.data")
+        else:
+            return
         
         id = best_identified_faces[0][0]
         score = best_identified_faces[0][1]
@@ -337,21 +351,27 @@ def upload_verify():
         # print('\t Verifying the voice...')
 
         start_rv = time.time()
+        # print(" --- before os.system --- ")
         err_code_rv = os.system("conda run -n voice_py3 python -W ignore " 
                                     + hp.integration.speaker_verification_path + "verify_speaker.py" 
                                     + " --verify t " 
                                     + " --test_wav_file " + audio_file_path
                                     + " --best_identified_speakers ./")
         end_rv = time.time() - start_rv
+        # print(" --- after os.system --- ")
 
-        if (err_code_rv == 0):
-            # Clean execution of voice extraction module
+        if (err_code_rv != 0):
+            # print("err : something occured during os.system(speaker_verify.py)")
             pass
 
-        with open('./speaker_result.data', 'rb') as filehandle:
-            global best_identified_speakers
-            best_identified_speakers = pickle.load(filehandle)
-        os.system("rm ./speaker_result.data")
+        # Open the generated file, exit if no file was generated
+        if (os.path.isfile("./speaker_result.data")):
+            with open('./speaker_result.data', 'rb') as filehandle:
+                global best_identified_speakers
+                best_identified_speakers = pickle.load(filehandle)
+            os.system("rm ./speaker_result.data")
+        else:
+            return
 
         id = best_identified_speakers[0][0]
         score = best_identified_speakers[0][1]
@@ -387,20 +407,35 @@ def upload_verify():
 
         s2t_start = time.time()
         # Converting the .m4a input audio file to .wav (it will be deleted later on)
-        os.system("ffmpeg -loglevel quiet -y -i " + audio_file_path + " audio_file.wav")
+        err_code_ff = os.system("ffmpeg -loglevel quiet -y -i " + audio_file_path + " audio_file.wav")
+        if (err_code_ff != 0):
+            # print("err : something occured during os.system(ffmpeg)")
+            pass
         conversion_end = time.time() - s2t_start
-        os.system("deepspeech" 
-                + " --model deepspeech_model.pbmm " 
-                + " --scorer deepspeech_model.scorer " 
-                + " --audio  audio_file.wav "
-                + " > speech-to-text_result 2>&1")
+        
+        if (os.path.isfile("audio_file.wav")):
+            err_code_st = os.system("deepspeech" 
+                    + " --model deepspeech_model.pbmm " 
+                    + " --scorer deepspeech_model.scorer " 
+                    + " --audio  audio_file.wav "
+                    + " > speech-to-text_result 2>&1")
+            # Deleting temp wav file
+            os.system("rm audio_file.wav")
+            if (err_code_st != 0):
+                # print("err : something occured during os.system(deepspeech)")
+                pass
 
-        with open("speech-to-text_result", 'rt') as f:
-            lines = f.readlines()
 
-        # Deleting temp files
+        # Open the generated file, exit if no file was generated
+        if (os.path.isfile("speech-to-text_result")):
+            with open("speech-to-text_result", 'rt') as f:
+                lines = f.readlines()
+        else:
+            return
+
+        # Deleting temp result file
         os.system("rm speech-to-text_result")
-        os.system("rm audio_file.wav")
+        
 
         inference_time = lines[-2].replace("Inference took ", "").replace("\n", "")
         speech_full = lines[-1]
@@ -423,23 +458,27 @@ def upload_verify():
     # -----------------------------------
     #              DECISION
     # -----------------------------------
-    
-    # Waiting for face thread execution to finish
-    thread_face.join()
-    
-    # Checking if the face extraction returned any errors
-    f = open("face_detect_err_file", "rt")
-    err = f.read()
-    f.close()
-    os.system("rm face_detect_err_file")
-    if (len(err) != 0):
-        return "Visage non visible" if "face" in err else "Image introuvable"
+
 
     # Waiting for speech-to-text thread execution to finish
     thread_speech2text.join()
 
     # Waiting for voice thread execution to finish
     thread_voice.join()
+    
+    # Waiting for face thread execution to finish
+    thread_face.join()
+
+    # Checking if the face extraction returned any errors
+    if(os.path.isfile("face_detect_err_file")):
+        f = open("face_detect_err_file", "rt")
+        err = f.read()
+        f.close()
+        os.system("rm face_detect_err_file")
+        if (len(err) != 0):
+            print('\n\n    FACE RECOGNITION : \n\t - ' + err + '\n\n')
+            return "Visage non visible" if "face" in err else "Image introuvable"
+
 
 # Always delete user data, for debugging purposes, remove this line for production & restore the one below
     #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
@@ -466,6 +505,11 @@ def upload_verify():
 
 
     print("\n\n\n ==> DECISION : ")
+    verification_date = timestamp.split('_')[0]
+    verification_date = verification_date[:4] + '-'+ verification_date[4:6] + '-' + verification_date[6:]
+    
+    verification_time = timestamp.split('_')[1]
+    verification_time = verification_time[:2] + ':' + verification_time[2:4] + ':' + verification_time[4:]
 
     if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
                                      and (top_voice_acc >= threshold_voice) \
@@ -489,11 +533,6 @@ def upload_verify():
             access_msg = ' Numéro porte inaudible'
 
 
-        verification_date = timestamp.split('_')[0]
-        verification_date = verification_date[:4] + '-'+ verification_date[4:6] + '-' + verification_date[6:]
-        
-        verification_time = timestamp.split('_')[1]
-        verification_time = verification_time[:2] + ':' + verification_time[2:4] + ':' + verification_time[4:]
         # inserting the verification log
         insert_verification_log(top_face_id, door_number_digits, verification_date, verification_time)
 
@@ -534,10 +573,10 @@ def upload_verify():
 
     print("\n\t # Global recognition time : %f" % (time.time() - start_rec))
 
-    print("\n\n\n\n\n    Ordered list of speakers : \n")
-    print(*best_identified_speakers, sep='\n')
-    print("\n    Ordered list of faces : \n")
-    print(*best_identified_faces, sep='\n')
+    # print("\n\n\n\n\n    Ordered list of speakers : \n")
+    # print(*best_identified_speakers, sep='\n')
+    # print("\n    Ordered list of faces : \n")
+    # print(*best_identified_faces, sep='\n')
 
 
     print('\n\n\n\n\n\n')
