@@ -8,11 +8,14 @@ import numpy
 import base64
 import time
 import pickle
+from datetime import datetime
+#from db_tables import employees
 import threading
-
 
 import sys
 sys.path.insert(1, '../config')
+# insert at 1, 0 is the script path (or '' in REPL)
+
 from hparam import hparam as hp
 
 from aes_utils import AESCipher
@@ -22,6 +25,203 @@ aes_cipher = AESCipher(key)
 
 # Initiating the Flask app
 app = Flask(__name__)
+
+
+# Configuring the database connection
+
+if hp.app.ENV == 'dev':
+    app.debug = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + \
+    hp.app.dev_db_username + ':' + \
+    hp.app.dev_db_password + '@' + \
+    hp.app.dev_db_host +  ':5432' +'/' + \
+    hp.app.dev_db_name
+else:
+    app.debug = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = ''
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+############################### Data Base tables ###############################
+
+class employees(db.Model):
+    __tablename__ = 'employees'
+    id = db.Column(db.Text, primary_key=True, autoincrement=False) #, default=db.session.query(func.public.generate_uid(5)).all())
+    employee_first_name = db.Column(db.String(50))
+    employee_last_name = db.Column(db.String(50))
+    employee_phone = db.Column(db.String(12)) #,  unique=True) should be unique later
+    employee_proffession = db.Column(db.String(50))
+    employee_banned = db.Column(db.Text, default='') # '' <==> not banned | not empty value <==> banned
+    employee_role = db.Column(db.String(200), default='user')
+    facial_biometric = db.Column(db.Text, unique=True) # path to preprocessed face data
+    vocal_biometric = db.Column(db.Text, unique=True) # path to preprocessed voice data
+    date_inscription = db.Column(db.Date)
+    time_inscription = db.Column(db.Time)
+    #inscription_description = db.Column(db.String(200), default='')
+    
+
+    def __init__(self, employee_id, first_name, last_name, phone, proffession, banned, role,
+                facial_biometric, vocal_biometric, date_inscription, time_inscription): #, inscription_description):
+        self.id = employee_id
+        self.employee_first_name = first_name
+        self.employee_last_name = last_name
+        self.employee_phone = phone
+        self.employee_proffession = proffession
+        self.employee_banned = banned  # '' <==> not banned | not empty value <==> banned
+        self.employee_role = role
+        self.facial_biometric = facial_biometric
+        self.vocal_biometric = vocal_biometric
+        self.date_inscription = date_inscription
+        self.time_inscription = time_inscription
+        #self.inscription_description = inscription_description
+
+class rooms(db.Model):
+    __tablename__ = 'rooms'
+    id = db.Column(db.Text, primary_key=True, autoincrement= False) # this is the door number (4 digits)
+    room_description = db.Column(db.String(200), default= '')
+
+    def __init__(self, num_door, room_description=''):
+        self.id = num_door
+        self.room_description = room_description
+
+class has_access_table(db.Model):
+    __tablename__ = 'has_access_table'
+    employee_id = db.Column(db.Text, db.ForeignKey(employees.id), primary_key=True)
+    room_id = db.Column(db.Text, db.ForeignKey(rooms.id), primary_key=True)
+    date_has_access = db.Column(db.Date)
+    time_has_access = db.Column(db.Time)
+    description_has_access = db.Column(db.String(200))
+
+    employee = db.relationship('employees', foreign_keys='has_access_table.employee_id')
+    room = db.relationship('rooms', foreign_keys='has_access_table.room_id')
+
+    def __init__(self, employee_id, room_id, date_has_access, time_has_access):
+        self.employee_id = employee_id
+        self.room_id = room_id
+        self.date_has_access = date_has_access
+        self.time_has_access = time_has_access
+
+'''class log_inscription(db.Model):
+    __tablename__ = 'log_inscription'
+    id = db.Column(db.Integer, primary_key=True) #, default=db.session.query(func.public.generate_uid(5)).all())
+    employee_id = db.Column(db.Text, db.ForeignKey(employees.id))
+
+    facial_biometric = db.Column(db.Text, unique=True) # path to preprocessed face data
+    vocal_biometric = db.Column(db.Text, unique=True) # path to preprocessed voice data
+    date_inscription = db.Column(db.Date)
+    time_inscription = db.Column(db.Time)
+    inscription_description = db.Column(db.String(200), default='')
+
+    employee = db.relationship('employees', foreign_keys='log_inscription.employee_id')
+
+    def __init__(self, facial_biometric, vocal_biometric, employee_id, 
+                date_inscription, time_inscription, inscription_description=''):
+        self.facial_biometric = facial_biometric
+        self.vocal_biometric = vocal_biometric
+        self.date_inscription = date_inscription
+        self.time_inscription = time_inscription
+        self.inscription_description = inscription_description
+        self.employee_id = employee_id'''
+
+
+class log_verification(db.Model):
+    __tablename__ = 'log_verification'
+    employee_id = db.Column(db.Text)#, db.ForeignKey(employees.id)) #, primary_key=True)
+    room_id = db.Column(db.Text) #, db.ForeignKey(rooms.id))#, primary_key=True)
+    date_verification = db.Column(db.Date, primary_key=True)
+    time_verification = db.Column(db.Time, primary_key=True)
+    verification_description = db.Column(db.String(200), default='')
+
+    #employee = db.relationship('employees', foreign_keys='log_verification.employee_id')
+    #room = db.relationship('rooms', foreign_keys='log_verification.room_id')
+
+    def __init__(self, employee_id, room_id, date_verification, 
+                    time_verification, verification_description=''):
+        self.employee_id = employee_id
+        self.room_id = room_id
+        self.date_verification = date_verification
+        self.time_verification = time_verification
+        self.verification_description = verification_description
+
+
+################################################################################
+# To recreate an empty database call this function and it will do the job
+def create_empty_db():
+    db.drop_all()
+    db.create_all()
+    db.session.commit()
+
+#create_empty_db()
+
+# create and insert new user
+def insert_new_user(id_employee, first_name, last_name, 
+                    face_npy_path, voice_npy_path, enrollment_date, enrollment_time, 
+                    phone='', proffession='', banned='', role='user' ):
+
+
+    employee = employees(id_employee, first_name, last_name, phone, proffession, banned, role, 
+                face_npy_path, voice_npy_path, enrollment_date, enrollment_time)
+    db.session.add(employee)
+    db.session.commit()
+
+def ban_user(employee_id):
+    employee = employees.query.filter_by(id == employee_id).first()
+    employee.employee_banned = datetime.now.strftime("%Y-%m-%d %H:%M:%S")
+    db.session.commit()
+
+
+def unban_user(employee_id):
+    employee = employees.query.filter_by(id == employee_id).first()
+    employee.employee_banned = ''
+    db.session.commit()
+
+
+# create and insert new room
+def insert_room(room_id):
+    room = rooms(room_id)
+    db.session.add(room)
+    db.session.commit()
+# insert some rooms
+""" insert_room('3412')
+insert_room('2585')
+insert_room('3691')
+insert_room('4571')
+ """
+
+# add new permission to user (to a given room)
+def add_access_permission_user(id_employee, id_room):
+    access_permission = has_access_table(id_employee, id_room, datetime.today().strftime('%Y-%m-%d'),
+                                    datetime.now().strftime('%H:%M:%S'))
+    db.session.add(access_permission)
+    db.session.commit()
+
+# verify if a given user have access to a building
+def has_access(id_employee, room_number):
+    access = db.session.query(has_access_table).filter(has_access_table.employee_id == id_employee, 
+                    has_access_table.room_id == room_number).count()
+    return False if access == 0 else True
+
+# remove permission of user to a room
+def remove_permession_user(id_employee, room_number):
+    has_access_table.query.filter_by(employee_id == id_employee, room_id == room_number).delete()
+    db.session.commit()
+
+# inserting enrollment log
+'''def insert_enrollment_log(face_path, voice_path, employee_id, 
+                        inscription_date, inscription_time):
+    log_inscription_item = log_inscription(face_path, voice_path, employee_id, inscription_date, inscription_time)
+    db.session.add(log_inscription_item)
+    db.session.commit()
+'''
+# inserting verification log
+def insert_verification_log(employee_id, room_id, verification_date, verification_time):
+    log_verification_item = log_verification(employee_id, room_id, verification_date, verification_time)
+    db.session.add(log_verification_item)
+    db.session.commit()
+
+
+################################################################################
 
 
 @app.route('/', methods = ['GET'])
@@ -172,14 +372,19 @@ def upload_verify():
             os.system("rm ./speaker_result.data")
         else:
             return
-
-        id = best_identified_speakers[0][0]
-        score = best_identified_speakers[0][1]
-        lname_voice = id.split('_')[2]
-        fname_voice = id.split('_')[3]
+        
+        id_0 = best_identified_speakers[0][0]
+        id_1 = best_identified_speakers[1][0]
+        id_2 = best_identified_speakers[2][0]
+        score_0 = best_identified_speakers[0][1]
+        score_1 = best_identified_speakers[1][1]
+        score_2 = best_identified_speakers[2][1]
         print('\n\n    VOICE RECOGNITION : '
             + '\n\t - Time to recognize voice : %f' % (end_rv) 
-            + '\n\t - Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
+            + '\n\t - Identified the voice in the top 3 : '
+            + '\n\t\t + %s %s - (precision : %d%%)' % (id_0.split('_')[2], id_0.split('_')[3], int(100*score_0))
+            + '\n\t\t + %s %s - (precision : %d%%)' % (id_1.split('_')[2], id_1.split('_')[3], int(100*score_1))
+            + '\n\t\t + %s %s - (precision : %d%%)' % (id_2.split('_')[2], id_2.split('_')[3], int(100*score_2)))
 
     thread_voice = threading.Thread(target=verify_speaker)
     thread_voice.start()
@@ -290,11 +495,24 @@ def upload_verify():
 
     # Accessing recognition results from the modules
     top_face_id = best_identified_faces[0][0]
-    top_voice_id = best_identified_speakers[0][0]
+    """ top_voice_id = best_identified_speakers[0][0] """
+
+    # Function to check if the identified face id is in the top three recognized speakers
+    #           and return the accuracy of the corresponding speaker
+    def firstThreeSpeakers():
+        speaker_ids = []
+        speaker_accs = []
+        for speaker_id, acc in best_identified_speakers:
+            speaker_ids.append(speaker_id)
+            speaker_accs.append(acc)
+        return top_face_id in speaker_ids[:3], speaker_accs[speaker_ids.index(top_face_id)]
+    
+    face_in_top_3 , speaker_acc = firstThreeSpeakers()
 
     # Accessing best candidates & calculating the dynamic decision function
     top_face_acc = best_identified_faces[0][1]
-    top_voice_acc = best_identified_speakers[0][1]
+    """ top_voice_acc = best_identified_speakers[0][1] """
+    top_voice_acc = speaker_acc
     
     # Retrieving the importance weights for face & voice
     weight_face = hp.integration.weight_face
@@ -305,60 +523,79 @@ def upload_verify():
 
 
     print("\n\n\n ==> DECISION : ")
+    verification_date = timestamp.split('_')[0]
+    verification_date = verification_date[:4] + '-'+ verification_date[4:6] + '-' + verification_date[6:]
+    
+    verification_time = timestamp.split('_')[1]
+    verification_time = verification_time[:2] + ':' + verification_time[2:4] + ':' + verification_time[4:]
 
-    if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
-                                     and (top_voice_acc >= threshold_voice) \
-                                     and (general_acc >= threshold_general):
+    #if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
 
-        # Delete user data when succeessfully identified
-        #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
+
+    if (face_in_top_3) and (speaker_acc >= threshold_voice) \
+                                        and (top_face_acc >= threshold_face) \
+                                        and (general_acc >= threshold_general):
         
-        # Check is the identified person has the access credentials
-        def has_access(id, door):
-            return (int(100*general_acc) % 2 == 0)   # dummy condition, just for variation
-
+        # Delete user data when succeessfully identified
+        os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
+        
         # Check if the speech-to-text module successfuly extracted the door number 
         if ("integer" not in door_number_digits):
 
-            if (has_access(id, door_number_digits)):
+            # Check if the identified person has the access credentials
+            if (has_access(top_face_id, door_number_digits)):
                 # grant_access() # function to grant access (pings the hardware side of the system)
                 print('\n\t - Access granted (door %s)' % door_number_digits)
-                access_msg = ''
+                access_msg = ' Accès accordé au salle : ' + door_number_digits
             else:
                 print('\n\t - Access denied (door %s)' % door_number_digits)
-                access_msg = ' Accès refusé'
+                access_msg = ' Accès refusé au salle : ' + door_number_digits 
         else:
             access_msg = ' Numéro porte inaudible'
+
+
+        # inserting the verification log
+        insert_verification_log(top_face_id, door_number_digits, verification_date, verification_time)
 
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + access_msg
         lname_rec = top_face_id.split('_')[2]
         fname_rec = top_face_id.split('_')[3]
-        print('\n\t # Identity confirmed successfully, %s %s - (global precision : %d%%)' % (lname_rec, fname_rec, int(100*general_acc)))
+        print('\n\t # Identity confirmed successfully, %s %s (voice identified in top 3) - Global precision : %d%%' % (lname_rec, fname_rec, int(100*general_acc)))
 
     elif (top_face_acc < threshold_face) and (top_voice_acc < threshold_voice):
         return_msg = 'Non reconnu'
+        # inserting the verification log
+        insert_verification_log(timestamp, '-1', verification_date, verification_time)
         print('\n\t - Not recognized')
 
     elif (top_face_acc < threshold_face):
         return_msg = 'Visage non reconnu, réessayez'
+        # inserting the verification log
+        insert_verification_log(timestamp, '-1', verification_date, verification_time)
         print('\n\t - Face accuracy < threshold, waiting for retry...')
 
     elif (top_voice_acc < threshold_voice):
         return_msg = 'Voix non reconnue, réessayez'
+        # inserting the verification log
+        insert_verification_log(timestamp, '-1', verification_date, verification_time)
         print('\n\t - Voice accuracy < threshold, waiting for retry...')
 
     elif (general_acc < threshold_general):
         return_msg = 'Non reconnu, réessayez'
+        # inserting the verification log
+        insert_verification_log(timestamp, '-1', verification_date, verification_time)
         print('\n\t - Dynamic function not satistied, waiting for retry...')
 
     else: # (top_face_id != top_voice_id) even though both thresholds are satisfied
         return_msg = 'Partiellement reconnu, réessayez'
+        # inserting the verification log
+        insert_verification_log(timestamp, '-1', verification_date, verification_time)
         print('\n\t - Face and voice mismatch, waiting for retry...')
 
     print("\n\t # Global recognition time : %f" % (time.time() - start_rec))
 
-    # print("\n\n\n\n\n    Ordered list of speakers : \n")
-    # print(*best_identified_speakers, sep='\n')
+    print("\n\n\n\n\n    Ordered list of speakers : \n")
+    print(*best_identified_speakers, sep='\n')
     # print("\n    Ordered list of faces : \n")
     # print(*best_identified_faces, sep='\n')
 
@@ -436,13 +673,36 @@ def upload_enroll():
     err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
                                 + hp.integration.face_verification_path + "save_face_embeddings.py"
                                 + " --input_image " + input_face_image
-                                + " --destination_dir " + hp.integration.enroll_preprocessed_photo)
-    print("\t - Time to get and save embeddings : %f" % (time.time() - start_rf1_1))
+                                + " --destination_dir " + hp.integration.enroll_preprocessed_photo
+                                + " 2> err_output_identify_face_enroll")
+    print("\t - Time to get and save face embeddings : %f" % (time.time() - start_rf1_1))
+
 
     # if (err_code_rf1 + err_code_rf2 == 0):
     #     os.system("rm " + img_file_path + " " + input_face_image)
+    # audio_file_path = 'uploads_enrollment/audio/' + os.path.splitext(aes_cipher.decrypt(request.form['audio-file-name']))[0] + '.npy'
+    # img_file_path = 'uploads_enrollment/photo/'+ os.path.splitext(aes_cipher.decrypt(request.form['photo-file-name']))[0] + '_visage.jpg'
+    
+    
+    # insert the new user into database
 
+    # insert the enrollment log in database
+    face_npy_path = hp.integration.enroll_preprocessed_photo + user_id + '_enroll_photo_visage.npy'
+    voice_npy_path = hp.integration.enroll_preprocessed_audio + user_id + '_audio.npy'
+    
+    enrollment_date = user_id.split('_')[0]
+    enrollment_date = enrollment_date[:4] + '-'+ enrollment_date[4:6] + '-' + enrollment_date[6:]
+    
+    enrollment_time = user_id.split('_')[1]
+    enrollment_time = enrollment_time[:2] + ':' + enrollment_time[2:4] + ':' + enrollment_time[4:]
 
+    # inserting the enrollment log
+    insert_new_user(id_employee=user_id, first_name=fname, last_name= lname, 
+    face_npy_path=face_npy_path, voice_npy_path=voice_npy_path, 
+    enrollment_date=enrollment_date, enrollment_time=enrollment_time)
+
+    #insert_enrollment_log(face_npy_path, voice_npy_path, user_id, enrollment_date, enrollment_time)
+    
     print('\n\t     # Successfully enrolled : ' + lname + ' ' + fname)
 
     print('\n\t     # Photo and audio preprocessed and saved under the ID : ' + user_id + '\n')
@@ -454,4 +714,5 @@ if __name__ == '__main__':
     #app.debug = True
     host, port = ("193.194.91.145", 5004)
     app.run(host=host, port= port, debug=True)
+    
 
