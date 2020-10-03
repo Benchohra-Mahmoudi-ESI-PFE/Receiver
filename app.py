@@ -183,11 +183,11 @@ def insert_room(room_id):
     db.session.add(room)
     db.session.commit()
 # insert some rooms
-'''insert_room('1234')
-insert_room('2345')
-insert_room('3456')
-insert_room('4567')'''
-
+""" insert_room('3412')
+insert_room('2585')
+insert_room('3691')
+insert_room('4571')
+ """
 
 # add new permission to user (to a given room)
 def add_access_permission_user(id_employee, id_room):
@@ -372,14 +372,19 @@ def upload_verify():
             os.system("rm ./speaker_result.data")
         else:
             return
-
-        id = best_identified_speakers[0][0]
-        score = best_identified_speakers[0][1]
-        lname_voice = id.split('_')[2]
-        fname_voice = id.split('_')[3]
+        
+        id_0 = best_identified_speakers[0][0]
+        id_1 = best_identified_speakers[1][0]
+        id_2 = best_identified_speakers[2][0]
+        score_0 = best_identified_speakers[0][1]
+        score_1 = best_identified_speakers[1][1]
+        score_2 = best_identified_speakers[2][1]
         print('\n\n    VOICE RECOGNITION : '
             + '\n\t - Time to recognize voice : %f' % (end_rv) 
-            + '\n\t - Identified the voice as : %s %s - (precision : %d%%)' % (lname_voice, fname_voice, int(100*score)))
+            + '\n\t - Identified the voice in the top 3 : '
+            + '\n\t\t + %s %s - (precision : %d%%)' % (id_0.split('_')[2], id_0.split('_')[3], int(100*score_0))
+            + '\n\t\t + %s %s - (precision : %d%%)' % (id_1.split('_')[2], id_1.split('_')[3], int(100*score_1))
+            + '\n\t\t + %s %s - (precision : %d%%)' % (id_2.split('_')[2], id_2.split('_')[3], int(100*score_2)))
 
     thread_voice = threading.Thread(target=verify_speaker)
     thread_voice.start()
@@ -490,11 +495,24 @@ def upload_verify():
 
     # Accessing recognition results from the modules
     top_face_id = best_identified_faces[0][0]
-    top_voice_id = best_identified_speakers[0][0]
+    """ top_voice_id = best_identified_speakers[0][0] """
+
+    # Function to check if the identified face id is in the top three recognized speakers
+    #           and return the accuracy of the corresponding speaker
+    def firstThreeSpeakers():
+        speaker_ids = []
+        speaker_accs = []
+        for speaker_id, acc in best_identified_speakers:
+            speaker_ids.append(speaker_id)
+            speaker_accs.append(acc)
+        return top_face_id in speaker_ids[:3], speaker_accs[speaker_ids.index(top_face_id)]
+    
+    face_in_top_3 , speaker_acc = firstThreeSpeakers()
 
     # Accessing best candidates & calculating the dynamic decision function
     top_face_acc = best_identified_faces[0][1]
-    top_voice_acc = best_identified_speakers[0][1]
+    """ top_voice_acc = best_identified_speakers[0][1] """
+    top_voice_acc = speaker_acc
     
     # Retrieving the importance weights for face & voice
     weight_face = hp.integration.weight_face
@@ -511,12 +529,15 @@ def upload_verify():
     verification_time = timestamp.split('_')[1]
     verification_time = verification_time[:2] + ':' + verification_time[2:4] + ':' + verification_time[4:]
 
-    if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
-                                     and (top_voice_acc >= threshold_voice) \
-                                     and (general_acc >= threshold_general):
+    #if (top_face_id == top_voice_id) and (top_face_acc >= threshold_face) \
 
+
+    if (face_in_top_3) and (speaker_acc >= threshold_voice) \
+                                        and (top_face_acc >= threshold_face) \
+                                        and (general_acc >= threshold_general):
+        
         # Delete user data when succeessfully identified
-        #os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
+        os.system("rm " + audio_file_path + " " + img_file_path + " " + img_file_path.replace(".jpg", "_visage.jpg"))
         
         # Check if the speech-to-text module successfuly extracted the door number 
         if ("integer" not in door_number_digits):
@@ -525,10 +546,10 @@ def upload_verify():
             if (has_access(top_face_id, door_number_digits)):
                 # grant_access() # function to grant access (pings the hardware side of the system)
                 print('\n\t - Access granted (door %s)' % door_number_digits)
-                access_msg = ''
+                access_msg = ' Accès accordé au salle : ' + door_number_digits
             else:
                 print('\n\t - Access denied (door %s)' % door_number_digits)
-                access_msg = ' Accès refusé'
+                access_msg = ' Accès refusé au salle : ' + door_number_digits 
         else:
             access_msg = ' Numéro porte inaudible'
 
@@ -539,7 +560,7 @@ def upload_verify():
         return_msg = 'Bienvenue, ' + ' '.join(best_identified_faces[0][0].split('_')[2:4]) + access_msg
         lname_rec = top_face_id.split('_')[2]
         fname_rec = top_face_id.split('_')[3]
-        print('\n\t # Identity confirmed successfully, %s %s - (global precision : %d%%)' % (lname_rec, fname_rec, int(100*general_acc)))
+        print('\n\t # Identity confirmed successfully, %s %s (voice identified in top 3) - Global precision : %d%%' % (lname_rec, fname_rec, int(100*general_acc)))
 
     elif (top_face_acc < threshold_face) and (top_voice_acc < threshold_voice):
         return_msg = 'Non reconnu'
@@ -573,8 +594,8 @@ def upload_verify():
 
     print("\n\t # Global recognition time : %f" % (time.time() - start_rec))
 
-    # print("\n\n\n\n\n    Ordered list of speakers : \n")
-    # print(*best_identified_speakers, sep='\n')
+    print("\n\n\n\n\n    Ordered list of speakers : \n")
+    print(*best_identified_speakers, sep='\n')
     # print("\n    Ordered list of faces : \n")
     # print(*best_identified_faces, sep='\n')
 
@@ -652,8 +673,10 @@ def upload_enroll():
     err_code_rf2 = os.system("conda run -n vgg_py3 python -W ignore " 
                                 + hp.integration.face_verification_path + "save_face_embeddings.py"
                                 + " --input_image " + input_face_image
-                                + " --destination_dir " + hp.integration.enroll_preprocessed_photo)
+                                + " --destination_dir " + hp.integration.enroll_preprocessed_photo
+                                + " 2> err_output_identify_face_enroll")
     print("\t - Time to get and save face embeddings : %f" % (time.time() - start_rf1_1))
+
 
     # if (err_code_rf1 + err_code_rf2 == 0):
     #     os.system("rm " + img_file_path + " " + input_face_image)

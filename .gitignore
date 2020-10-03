@@ -17,3 +17,4 @@ deepspeech_model.scorer
 err_output_identify_face
 face_detect_err_file
 *.old
+err_output_identify_face_enroll
